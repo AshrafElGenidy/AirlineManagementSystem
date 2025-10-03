@@ -1,0 +1,533 @@
+@startuml Airline_Management_System
+
+' ==================== Styling Configuration ====================
+skinparam classAttributeIconSize 0
+skinparam linetype ortho
+skinparam backgroundColor #FEFEFE
+skinparam roundcorner 10
+skinparam shadowing false
+
+' Class styling
+skinparam class {
+  BackgroundColor<<Abstract>> #E8F5E9
+  BackgroundColor<<Enum>> #FFF3E0
+  BackgroundColor<<Singleton>> #E3F2FD
+  BackgroundColor<<Entity>> #F3E5F5
+  BackgroundColor<<Controller>> #FFE0B2
+  BackgroundColor<<Utility>> #E0F2F1
+  BorderColor #424242
+  ArrowColor #616161
+  FontName Arial
+  FontSize 11
+}
+
+' Tighter layout
+skinparam nodesep 60
+skinparam ranksep 80
+skinparam packageStyle rectangle
+
+' ==================== User Management (Top Left) ====================
+
+package "User Management" {
+  enum UserRole <<Enum>> {
+    ADMINISTRATOR
+    BOOKING_AGENT
+    PASSENGER
+  }
+
+  abstract class User <<Abstract>> {
+    # userId: string
+    # username: string
+    # passwordHash: string
+    # role: UserRole
+    # email: string
+    # phoneNumber: string
+    # name: string
+    + User(username: string, password: string, role: UserRole)
+    + {abstract} displayMenu(): void
+    + {abstract} handleMenuChoice(choice: int): void
+    + login(username: string, password: string): bool
+    + logout(): void
+    + verifyPassword(password: string): bool
+    + getUserId(): string
+    + getUsername(): string
+    + getName(): string
+    + getRole(): UserRole
+  }
+
+  class Administrator {
+    - adminLevel: int
+    + Administrator(username: string, password: string)
+    + manageFlights(): void
+    + addNewFlight(): void
+    + updateExistingFlight(): void
+    + removeFlight(): void
+    + viewAllFlights(): void
+    + manageAircraft(): void
+    + manageUsers(): void
+    + generateReports(): void
+    + generateOperationalReport(): void
+    + assignCrewMenu(flightNumber: string): void
+  }
+
+  class BookingAgent {
+    - agentId: string
+    - commissionRate: double
+    - totalBookings: int
+    + BookingAgent(username: string, password: string)
+    + searchFlightsMenu(): void
+    + bookFlightMenu(): void
+    + modifyReservationMenu(): void
+    + cancelReservationMenu(): void
+    + processRefund(reservationId: string, amount: double): bool
+  }
+
+  class Passenger {
+    - passengerId: string
+    - dateOfBirth: string
+    - passportNumber: string
+    - nationality: string
+    - travelHistory: vector<Reservation*>
+    - loyaltyPoints: int
+    - preferences: PassengerPreferences
+    + Passenger(username: string, password: string, name: string)
+    + searchFlightsMenu(): void
+    + bookFlightFromSearch(flightNumber: string): Reservation*
+    + viewMyReservationsMenu(): void
+    + checkInMenu(): void
+    + earnLoyaltyPoints(points: int): void
+    + redeemLoyaltyPoints(points: int): double
+  }
+
+  class PassengerPreferences {
+    + seatPreference: string
+    + mealPreference: string
+    + specialRequests: string
+  }
+  
+  User <|-- Administrator
+  User <|-- BookingAgent
+  User <|-- Passenger
+  User --> UserRole
+  Passenger --> PassengerPreferences
+}
+
+' ==================== Management System (Top Center) ====================
+
+package "Management System" {
+  class AirlineManagementSystem <<Singleton>> <<Controller>> {
+    - {static} instance: AirlineManagementSystem*
+    - users: map<string, User*>
+    - flights: map<string, Flight*>
+    - aircraft: map<string, Aircraft*>
+    - reservations: map<string, Reservation*>
+    - crewMembers: map<string, CrewMember*>
+    - pilots: vector<Pilot*>
+    - flightAttendants: vector<FlightAttendant*>
+    - currentUser: User*
+    - reportGenerator: ReportGenerator*
+    - checkInSystem: CheckInSystem*
+    - AirlineManagementSystem()
+    + {static} getInstance(): AirlineManagementSystem*
+    + initialize(): void
+    + start(): void
+    + displayWelcome(): void
+    + selectRole(): int
+    + login(role: UserRole): User*
+    + logout(): void
+    + addFlight(flight: Flight*): bool
+    + removeFlight(flightNumber: string): bool
+    + updateFlight(flightNumber: string): bool
+    + getFlight(flightNumber: string): Flight*
+    + getAllFlights(): vector<Flight*>
+    + searchFlights(criteria: SearchCriteria): vector<Flight*>
+    + addUser(user: User*): bool
+    + removeUser(userId: string): bool
+    + getUser(userId: string): User*
+    + authenticateUser(username: string, password: string, role: UserRole): User*
+    + createReservation(reservation: Reservation*): bool
+    + getReservation(reservationId: string): Reservation*
+    + cancelReservation(reservationId: string): bool
+    + getPassengerReservations(passengerId: string): vector<Reservation*>
+    + addAircraft(aircraft: Aircraft*): bool
+    + getAircraft(aircraftId: string): Aircraft*
+    + getAllAircraft(): vector<Aircraft*>
+    + addCrewMember(crew: CrewMember*): bool
+    + getPilots(): vector<Pilot*>
+    + getFlightAttendants(): vector<FlightAttendant*>
+    + assignCrewToFlight(flightNumber: string, pilotId: string, attendantId: string): bool
+    + generateReservationId(): string
+    + isSeatAvailable(flightNumber: string, seatNumber: string): bool
+    + shutdown(): void
+  }
+}
+
+' ==================== BookingSystem (Top Right) ====================
+
+package "BookingSystem" {
+  enum ReservationStatus <<Enum>> {
+    PENDING
+    CONFIRMED
+    CHECKED_IN
+    BOARDED
+    COMPLETED
+    CANCELED
+  }
+
+  class Reservation <<Entity>> {
+    - reservationId: string
+    - passengerId: string
+    - passengerName: string
+    - flightNumber: string
+    - seatNumber: string
+    - reservationStatus: ReservationStatus
+    - bookingDate: string
+    - payment: Payment*
+    - totalCost: double
+    + Reservation(passengerId: string, passengerName: string, flight: Flight*, ...)
+    + getReservationId(): string
+    + getPassengerName(): string
+    + getFlightNumber(): string
+    + getSeatNumber(): string
+    + getStatus(): ReservationStatus
+    + getTotalCost(): double
+    + confirmReservation(): void
+    + cancelReservation(): void
+    + displayBookingSuccess(): void
+  }
+
+  enum PaymentMethod <<Enum>> {
+    CREDIT_CARD
+    CASH
+    PAYPAL
+  }
+
+  enum TransactionStatus <<Enum>> {
+    PENDING
+    COMPLETED
+    FAILED
+    REFUNDED
+  }
+
+  class Payment {
+    - paymentId: string
+    - amount: double
+    - paymentMethod: PaymentMethod
+    - paymentDetails: string
+    - transactionStatus: TransactionStatus
+    + Payment(amount: double, method: PaymentMethod, details: string)
+    + processPayment(): bool
+    + refund(): bool
+    + getAmount(): double
+    + getPaymentMethodString(): string
+  }
+
+  class BoardingPass {
+    - boardingPassId: string
+    - reservationId: string
+    - passengerName: string
+    - flightNumber: string
+    - origin: string
+    - destination: string
+    - departureDateTime: string
+    - seatNumber: string
+    - gate: string
+    - boardingTime: string
+    + BoardingPass(reservation: Reservation*)
+    + displayBoardingPass(): void
+    + verify(): bool
+  }
+
+  class CheckInSystem {
+    + checkInPassenger(reservationId: string): BoardingPass*
+    + onlineCheckIn(reservationId: string): BoardingPass*
+    + verifyBoardingPass(boardingPass: BoardingPass*): bool
+  }
+  
+  Reservation --> ReservationStatus
+  Reservation "1" --> "0..1" Payment : paid by
+  Payment --> PaymentMethod
+  Payment --> TransactionStatus
+  BoardingPass "1" --> "1" Reservation : generated from
+  CheckInSystem ..> BoardingPass : creates
+}
+
+' ==================== Reporting (Bottom Left) ====================
+
+package "Reporting" {
+  class ReportGenerator <<Controller>> {
+    - AirlineManagementSystem: AirlineManagementSystem*
+    + ReportGenerator(controller: AirlineManagementSystem*)
+    + generateOperationalReport(month: string, year: string): void
+    + generateMaintenanceReport(): void
+    + generateUserActivityReport(userId: string): void
+    + generateFinancialReport(period: string): void
+  }
+
+  class OperationalReport {
+    - reportId: string
+    - month: string
+    - year: string
+    - totalFlightsScheduled: int
+    - flightsCompleted: int
+    - flightsDelayed: int
+    - flightsCanceled: int
+    - totalReservations: int
+    - totalRevenue: double
+    - flightPerformance: map<string, FlightStats>
+    + OperationalReport(month: string, year: string)
+    + displayReportSummary(): void
+    + displayDetailedPerformance(): void
+  }
+
+  class FlightStats {
+    + flightNumber: string
+    + status: string
+    + totalBookings: int
+    + revenue: double
+  }
+
+  class MaintenanceReport {
+    - totalMaintenanceActivities: int
+    - totalCost: double
+    - aircraftDowntime: map<string, double>
+    + displayReport(): void
+  }
+
+  class FinancialReport {
+    - period: string
+    - totalRevenue: double
+    - totalRefunds: double
+    - netRevenue: double
+    + displayReport(): void
+  }
+  
+  ReportGenerator ..> OperationalReport : creates
+  ReportGenerator ..> MaintenanceReport : creates
+  ReportGenerator ..> FinancialReport : creates
+  OperationalReport --> FlightStats
+}
+
+' ==================== Flight Management (Bottom Center) ====================
+
+package "Flight Management" {
+  enum FlightStatus <<Enum>> {
+    SCHEDULED
+    DELAYED
+    BOARDING
+    DEPARTED
+    ARRIVED
+    CANCELED
+  }
+
+  class Flight <<Entity>> {
+    - flightNumber: string
+    - origin: string
+    - destination: string
+    - departureDateTime: string
+    - arrivalDateTime: string
+    - aircraftType: string
+    - status: FlightStatus
+    - price: double
+    - assignedPilot: Pilot*
+    - assignedFlightAttendant: FlightAttendant*
+    - seatMap: SeatMap*
+    - totalSeats: int
+    - gate: string
+    - boardingTime: string
+    + Flight(flightNumber: string, origin: string, destination: string, ...)
+    + getFlightNumber(): string
+    + getOrigin(): string
+    + getDestination(): string
+    + getStatus(): FlightStatus
+    + getPrice(): double
+    + getTotalSeats(): int
+    + getAvailableSeats(): int
+    + updateStatus(status: FlightStatus): void
+    + assignPilot(pilot: Pilot*): bool
+    + assignFlightAttendant(attendant: FlightAttendant*): bool
+    + displayFlightInfo(): void
+    + isSeatAvailable(seatNumber: string): bool
+    + reserveSeat(seatNumber: string): bool
+    + releaseSeat(seatNumber: string): bool
+  }
+
+  class SearchCriteria {
+    + origin: string
+    + destination: string
+    + departureDate: string
+    + maxPrice: double
+    + SearchCriteria(origin: string, destination: string, date: string)
+  }
+
+  class SeatMap {
+    - totalSeats: int
+    - seats: map<string, Seat*>
+    + SeatMap(totalSeats: int)
+    + isSeatAvailable(seatNumber: string): bool
+    + isValidSeat(seatNumber: string): bool
+    + reserveSeat(seatNumber: string): bool
+    + releaseSeat(seatNumber: string): bool
+    + getAvailableSeatsCount(): int
+  }
+
+  class Seat {
+    - seatNumber: string
+    - seatClass: SeatClass
+    - isOccupied: bool
+    + Seat(seatNumber: string, seatClass: SeatClass)
+    + isAvailable(): bool
+    + reserve(): void
+    + release(): void
+  }
+
+  enum SeatClass <<Enum>> {
+    ECONOMY
+    BUSINESS
+    FIRST_CLASS
+  }
+  
+  Flight --> FlightStatus
+  Flight "1" --> "1" SeatMap : has
+  SeatMap "1" --> "*" Seat : contains
+  Seat --> SeatClass
+}
+
+' ==================== Resource Management (Bottom Right) ====================
+
+package "Resource Management" {
+  enum AircraftStatus <<Enum>> {
+    AVAILABLE
+    IN_FLIGHT
+    MAINTENANCE
+    OUT_OF_SERVICE
+  }
+
+  class Aircraft <<Entity>> {
+    - aircraftId: string
+    - aircraftType: string
+    - manufacturer: string
+    - model: string
+    - totalSeats: int
+    - status: AircraftStatus
+    - lastMaintenanceDate: string
+    - nextMaintenanceDate: string
+    - flightHours: double
+    - maintenanceLogs: vector<MaintenanceLog*>
+    + Aircraft(aircraftId: string, type: string, totalSeats: int)
+    + getAircraftType(): string
+    + getTotalSeats(): int
+    + isAvailable(): bool
+    + scheduleMaintenance(date: string): void
+    + addMaintenanceLog(log: MaintenanceLog*): void
+    + needsMaintenance(): bool
+  }
+
+  abstract class CrewMember <<Abstract>> {
+    # crewId: string
+    # name: string
+    # licenseNumber: string
+    # flightHours: double
+    # maxFlightHours: double
+    + CrewMember(crewId: string, name: string)
+    + {abstract} getRole(): string
+    + {abstract} displayInfo(): void
+    + getCrewId(): string
+    + getName(): string
+    + canBeAssigned(): bool
+    + assignToFlight(flight: Flight*): bool
+  }
+
+  class Pilot {
+    - rank: string
+    + Pilot(crewId: string, name: string, rank: string)
+    + getRank(): string
+  }
+
+  class FlightAttendant {
+    - languages: vector<string>
+    + FlightAttendant(crewId: string, name: string)
+    + getLanguages(): vector<string>
+  }
+
+  enum MaintenanceType <<Enum>> {
+    SCHEDULED
+    UNSCHEDULED
+    INSPECTION
+    REPAIR
+    OVERHAUL
+  }
+
+  class MaintenanceLog {
+    - logId: string
+    - aircraftId: string
+    - maintenanceDate: string
+    - maintenanceType: MaintenanceType
+    - description: string
+    - partsReplaced: vector<string>
+    - technician: string
+    - cost: double
+    + MaintenanceLog(aircraft: Aircraft*, type: MaintenanceType, description: string)
+    + displayLog(): void
+  }
+  
+  Aircraft --> AircraftStatus
+  Aircraft "1" --> "*" MaintenanceLog : has
+  CrewMember <|-- Pilot
+  CrewMember <|-- FlightAttendant
+  MaintenanceLog --> MaintenanceType
+}
+
+' ==================== Cross-Package Relationships ====================
+
+' AirlineManagementSystem manages everything
+AirlineManagementSystem "1" --> "*" User : manages
+AirlineManagementSystem "1" --> "*" Flight : manages
+AirlineManagementSystem "1" --> "*" Aircraft : manages
+AirlineManagementSystem "1" --> "*" Reservation : manages
+AirlineManagementSystem "1" --> "*" CrewMember : manages
+AirlineManagementSystem "1" --> "1" ReportGenerator : uses
+AirlineManagementSystem "1" --> "1" CheckInSystem : uses
+
+' Flight to Crew
+Flight "1" --> "0..1" Pilot : assigned
+Flight "1" --> "0..1" FlightAttendant : assigned
+
+' Report relationships
+ReportGenerator --> AirlineManagementSystem : queries
+
+' User actions through AirlineManagementSystem
+Administrator ..> AirlineManagementSystem : controls
+BookingAgent ..> AirlineManagementSystem : uses
+Passenger ..> AirlineManagementSystem : uses
+
+note right of AirlineManagementSystem
+  **Singleton Pattern**
+  Central orchestrator for all operations
+  Handles all menu flows and business logic
+  Data automatically persisted on changes
+  using nlohmann JSON library
+end note
+
+note bottom of User
+  **Abstract Interface**
+  Pure virtual methods:
+  - displayMenu()
+  - handleMenuChoice()
+  Not repeated in child classes
+end note
+
+note top of Flight
+  **Self-Managing Entity**
+  - Validates own data
+  - Throws exceptions on invalid input
+  - Handles JSON serialization
+end note
+
+note bottom of ReportGenerator
+  **Isolated Reporting**
+  Minimal coupling with system
+  Queries AirlineManagementSystem for data
+end note
+
+@enduml
