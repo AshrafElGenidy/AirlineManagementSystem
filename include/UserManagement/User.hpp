@@ -7,6 +7,7 @@
 #include <memory>
 #include <unordered_map>
 #include "json.hpp"
+#include "UserInterface.hpp"
 
 using std::string;
 using nlohmann::json;
@@ -35,6 +36,7 @@ protected:
 	mutable std::optional<json> cachedUserData;
 	
 	// Static data members
+	static UserInterface* ui;
 	static string usersFilePath;
 	static int nextUserId;
 	static std::unordered_map<string, string> usernameIndex;  // username -> userId map

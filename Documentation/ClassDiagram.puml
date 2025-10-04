@@ -133,6 +133,32 @@ package "User Management" {
 ' ==================== Management System (Top Center) ====================
 
 package "Management System" {
+  class UserInterface <<Singleton>> <<Utility>> {
+    - {static} instance: UserInterface*
+    - UserInterface()
+    + {static} getInstance(): UserInterface*
+    + print(message: string): void
+    + println(message: string): void
+    + printError(message: string): void
+    + printSuccess(message: string): void
+    + printWarning(message: string): void
+    + printHeader(header: string): void
+    + printSeparator(): void
+    + getString(prompt: string): string
+    + getInt(prompt: string): int
+    + getDouble(prompt: string): double
+    + getPassword(prompt: string): string
+    + getChoice(prompt: string, min: int, max: int): int
+    + getYesNo(prompt: string): bool
+    + getDate(prompt: string, format: string): string
+    + clearScreen(): void
+    + pauseScreen(): void
+    + displayMenu(title: string, options: vector<string>): void
+    + displayTable(headers: vector<string>, rows: vector<vector<string>>): void
+    + formatCurrency(amount: double): string
+    + validateInput<T>(prompt: string, validator: function<bool(T)>): T
+  }
+
   class AirlineManagementSystem <<Singleton>> <<Controller>> {
     - {static} instance: AirlineManagementSystem*
     - users: map<string, User*>
@@ -145,6 +171,7 @@ package "Management System" {
     - currentUser: User*
     - reportGenerator: ReportGenerator*
     - checkInSystem: CheckInSystem*
+    - ui: UserInterface*
     - AirlineManagementSystem()
     + {static} getInstance(): AirlineManagementSystem*
     + initialize(): void
@@ -178,6 +205,8 @@ package "Management System" {
     + isSeatAvailable(flightNumber: string, seatNumber: string): bool
     + shutdown(): void
   }
+  
+  AirlineManagementSystem --> UserInterface : uses
 }
 
 ' ==================== BookingSystem (Top Right) ====================
@@ -268,6 +297,7 @@ package "BookingSystem" {
   Payment --> TransactionStatus
   BoardingPass "1" --> "1" Reservation : generated from
   CheckInSystem ..> BoardingPass : creates
+  CheckInSystem --> UserInterface : uses
 }
 
 ' ==================== Reporting (Bottom Left) ====================
@@ -275,6 +305,7 @@ package "BookingSystem" {
 package "Reporting" {
   class ReportGenerator <<Controller>> {
     - AirlineManagementSystem: AirlineManagementSystem*
+    - ui: UserInterface*
     + ReportGenerator(controller: AirlineManagementSystem*)
     + generateOperationalReport(month: string, year: string): void
     + generateMaintenanceReport(): void
@@ -323,6 +354,7 @@ package "Reporting" {
   ReportGenerator ..> OperationalReport : creates
   ReportGenerator ..> MaintenanceReport : creates
   ReportGenerator ..> FinancialReport : creates
+  ReportGenerator --> UserInterface : uses
   OperationalReport --> FlightStats
 }
 
@@ -519,6 +551,12 @@ Administrator ..> AirlineManagementSystem : controls
 BookingAgent ..> AirlineManagementSystem : uses
 Passenger ..> AirlineManagementSystem : uses
 
+' All User classes use UserInterface
+User ..> UserInterface : uses
+Administrator ..> UserInterface : uses
+BookingAgent ..> UserInterface : uses
+Passenger ..> UserInterface : uses
+
 note right of AirlineManagementSystem
   **Singleton Pattern**
   Central orchestrator for all operations
@@ -527,12 +565,12 @@ note right of AirlineManagementSystem
   using nlohmann JSON library
 end note
 
-note bottom of User
-  **Abstract Interface**
-  Pure virtual methods:
-  - displayMenu()
-  - handleMenuChoice()
-  Not repeated in child classes
+note top of UserInterface
+  **Singleton Pattern**
+  Centralized I/O handling
+  All console input/output goes through here
+  Provides validation and formatting utilities
+  Ensures consistent user experience
 end note
 
 note top of Flight

@@ -25,5 +25,5 @@ clean:
 	@if exist obj (rd /s /q obj)
 	@if exist $(TARGET).exe (del /q $(TARGET).exe)
 
-run: 
+run: $(TARGET)
 	$(TARGET).exe

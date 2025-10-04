@@ -12,6 +12,7 @@
 // ==================== User Class ====================
 
 // Static member initialization
+UserInterface* User::ui = nullptr;
 string User::usersFilePath = "../Databases/Users.json";
 int User::nextUserId = 1;
 std::unordered_map<string, string> User::usernameIndex;
@@ -63,11 +64,14 @@ User::User(const string& username, const string& password, UserRole role)
 	usernameIndex[username] = this->userId;	
 	cachedUserData = userData;
 	
-	std::cout << "User '" << username << "' registered successfully with ID: " << userId << std::endl;
+	ui->printSuccess("User '" + username + "' registered successfully with ID: " + userId);
 }
 
 User::User(const string& userId) : userId(userId)
 {
+	// Initialize UI reference
+	ui = UserInterface::getInstance();
+	
 	// Load and cache user data
 	json userData = getUserData();
 	if (userData.empty())
@@ -163,7 +167,7 @@ std::unique_ptr<User> User::login(const string& username, const string& password
 	}
 	
 	// Successful login
-	std::cout << "Login successful! Welcome, " << user->getName() << std::endl;
+	ui->printSuccess("Login successful! Welcome, " + user->getName());
 	return user;
 }
 
@@ -182,11 +186,11 @@ void User::logout() noexcept
 	{
 		const json& userData = getUserData();
 		string username = userData["username"];
-		std::cout << "User " << username << " logged out successfully." << std::endl;
+		ui->printSuccess("User " + username + " logged out successfully.");
 	}
 	catch (...)
 	{
-		std::cout << "User logged out." << std::endl;
+		ui->println("User logged out.");
 	}
 }
 
@@ -434,6 +438,7 @@ string User::hashPassword(const string& password)
 
 void User::initializeUserSystem()
 {
+	ui = UserInterface::getInstance();
 
 	// Create JSON file if it doesn't exist
 	std::ifstream testFile(usersFilePath);
@@ -442,7 +447,7 @@ void User::initializeUserSystem()
 		json emptyData = json::object();
 		saveallUsersData(emptyData);
 		nextUserId = 1;  // Start from 1 for new database
-		std::cout << "Created new Users database at: " << usersFilePath << std::endl;
+		ui->printSuccess("Created new Users database at: " + usersFilePath);
 	}
 	else
 	{
