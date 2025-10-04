@@ -35,29 +35,43 @@ package "User Management" {
     PASSENGER
   }
 
+  enum UserErrorCode <<Enum>> {
+    SUCCESS
+    USERNAME_TAKEN
+    INVALID_USERNAME
+    INVALID_PASSWORD
+    USER_NOT_FOUND
+    INVALID_CREDENTIALS
+    DATABASE_ERROR
+  }
+
   abstract class User <<Abstract>> {
     # userId: string
-    # username: string
-    # passwordHash: string
-    # role: UserRole
-    # email: string
-    # phoneNumber: string
-    # name: string
     + User(username: string, password: string, role: UserRole)
+    + User(userId: string)
     + {abstract} displayMenu(): void
     + {abstract} handleMenuChoice(choice: int): void
-    + login(username: string, password: string): bool
+    + {static} initializeUserSystem(): void
+    + {static} findUserIdByUsername(username: string): optional<string>
+    + {static} createUserFromId(userId: string): unique_ptr<User>
+    + {static} login(username: string, password: string): unique_ptr<User>
     + logout(): void
-    + verifyPassword(password: string): bool
     + getUserId(): string
     + getUsername(): string
     + getName(): string
     + getRole(): UserRole
+    + getEmail(): string
+    + getPhoneNumber(): string
+    + setName(name: string): void
+    + setEmail(email: string): void
+    + setPhoneNumber(phoneNumber: string): void
   }
 
   class Administrator {
-    - adminLevel: int
     + Administrator(username: string, password: string)
+    + Administrator(userId: string)
+    + displayMenu(): void
+    + handleMenuChoice(choice: int): void
     + manageFlights(): void
     + addNewFlight(): void
     + updateExistingFlight(): void
@@ -71,10 +85,10 @@ package "User Management" {
   }
 
   class BookingAgent {
-    - agentId: string
-    - commissionRate: double
-    - totalBookings: int
     + BookingAgent(username: string, password: string)
+    + BookingAgent(userId: string)
+    + displayMenu(): void
+    + handleMenuChoice(choice: int): void
     + searchFlightsMenu(): void
     + bookFlightMenu(): void
     + modifyReservationMenu(): void
@@ -83,14 +97,10 @@ package "User Management" {
   }
 
   class Passenger {
-    - passengerId: string
-    - dateOfBirth: string
-    - passportNumber: string
-    - nationality: string
-    - travelHistory: vector<Reservation*>
-    - loyaltyPoints: int
-    - preferences: PassengerPreferences
     + Passenger(username: string, password: string, name: string)
+    + Passenger(userId: string)
+    + displayMenu(): void
+    + handleMenuChoice(choice: int): void
     + searchFlightsMenu(): void
     + bookFlightFromSearch(flightNumber: string): Reservation*
     + viewMyReservationsMenu(): void
@@ -104,11 +114,19 @@ package "User Management" {
     + mealPreference: string
     + specialRequests: string
   }
+
+  class UserException {
+    + UserException(code: UserErrorCode, message: string)
+    + what(): const char*
+    + getErrorCode(): UserErrorCode
+  }
   
   User <|-- Administrator
   User <|-- BookingAgent
   User <|-- Passenger
   User --> UserRole
+  User ..> UserException : throws
+  UserException --> UserErrorCode
   Passenger --> PassengerPreferences
 }
 
