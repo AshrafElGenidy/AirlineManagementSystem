@@ -308,9 +308,9 @@ package "Reporting" {
   OperationalReport --> FlightStats
 }
 
-' ==================== Flight Management (Bottom Center) ====================
+' ==================== FlightManagement (Bottom Center) ====================
 
-package "Flight Management" {
+package "FlightManagement" {
   enum FlightStatus <<Enum>> {
     SCHEDULED
     DELAYED
@@ -393,9 +393,9 @@ package "Flight Management" {
   Seat --> SeatClass
 }
 
-' ==================== Resource Management (Bottom Right) ====================
+' ==================== ResourceManagement (Bottom Right) ====================
 
-package "Resource Management" {
+package "ResourceManagement" {
   enum AircraftStatus <<Enum>> {
     AVAILABLE
     IN_FLIGHT
