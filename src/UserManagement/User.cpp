@@ -13,7 +13,7 @@
 
 // Static member initialization
 UserInterface* User::ui = nullptr;
-string User::usersFilePath = "../Databases/Users.json";
+string User::usersFilePath = "Databases/Users.json";
 int User::nextUserId = 1;
 std::unordered_map<string, string> User::usernameIndex;
 
@@ -447,7 +447,6 @@ void User::initializeUserSystem()
 		json emptyData = json::object();
 		saveallUsersData(emptyData);
 		nextUserId = 1;  // Start from 1 for new database
-		ui->printSuccess("Created new Users database at: " + usersFilePath);
 	}
 	else
 	{
@@ -482,8 +481,39 @@ void User::initializeUserSystem()
 		// Build username index for O(1) lookups
 		rebuildUsernameIndex();
 	}
-}	
-
+	
+	// Check if this is first-time setup (no users in database)
+	if (usernameIndex.empty())
+	{
+		ui->printHeader("FIRST TIME SETUP");
+		ui->println("No users found in the system.");
+		ui->println("You must create an Administrator account to continue.");
+		ui->printSeparator();
+		
+		bool adminCreated = false;
+		while (!adminCreated)
+		{
+			try
+			{
+				ui->println("\n=== Create Administrator Account ===");
+				string username = ui->getString("Enter admin username: ");
+				string password = ui->getPassword("Enter admin password: ");
+				
+				Administrator admin(username, password);
+				
+				ui->println("\nYou can now login with these credentials.");
+				ui->pauseScreen();
+				
+				adminCreated = true;
+			}
+			catch (const std::exception& e)
+			{
+				ui->printError(string(e.what()));
+				ui->println("Please try again.");
+			}
+		}
+	}
+}
 
 // ==================== UserException Class ====================
 
