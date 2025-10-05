@@ -2,27 +2,34 @@
 #define ADMINISTRATOR_HPP
 
 #include "User.hpp"
+#include <string>
+#include <memory>
 
-class Administrator : public User {
+using std::string;
+
+// Forward declaration
+class AirlineManagementSystem;
+
+class Administrator : public User
+{
 private:
-    int adminLevel;
+	std::shared_ptr<AirlineManagementSystem> system;
+
+	// User Management
+	void manageUsers();
+	void createNewUser();
+	void viewAllUsers();
+	void deleteUser();
+	void modifyUserInfo();
 
 public:
-    Administrator(const std::string& username, const std::string& password);
-    
-    void displayMenu() override;
-    void handleMenuChoice(int choice) override;
-    
-    void manageFlights();
-    void addNewFlight();
-    void updateExistingFlight();
-    void removeFlight();
-    void viewAllFlights();
-    void manageAircraft();
-    void assignCrewMenu(const std::string& flightNumber);
-    void manageUsers();
-    void generateReports();
-    void generateOperationalReport();
+	// Constructors
+	Administrator(const string& username, const string& password);
+	explicit Administrator(const string& userId);
+	
+	// Override pure virtual methods from User
+	void displayMenu() override;
+	void handleMenuChoice(int choice) override;	
 };
 
 #endif // ADMINISTRATOR_HPP
