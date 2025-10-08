@@ -24,7 +24,7 @@ private:
 
 	// Constructors
 	Administrator(const string& username, const string& password);
-	explicit Administrator(const int& userId);
+	explicit Administrator(const string& username);
 
 public:
 	

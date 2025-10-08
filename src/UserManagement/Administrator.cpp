@@ -12,12 +12,12 @@ Administrator::Administrator(const string& username, const string& password): Us
 	system = AirlineManagementSystem::getInstance();
 }
 
-Administrator::Administrator(const int& userId): User(userId)
+Administrator::Administrator(const string& username): User(username)
 {
 	// Verify this user is actually an administrator
 	if (getRole() != UserRole::ADMINISTRATOR)
 	{
-		throw UserException(UserErrorCode::INVALID_CREDENTIALS, "User " + std::to_string(userId) + " is not an Administrator.");
+		throw UserException(UserErrorCode::INVALID_CREDENTIALS, "User '" + username + "' is not an Administrator.");
 	}
 	
 	system = AirlineManagementSystem::getInstance();
@@ -129,7 +129,7 @@ void Administrator::createNewUser()
 		string username = ui->getString("Enter username: ");
 		string password = ui->getPassword("Enter password: ");
 		
-		// Create user based on role - let User constructor handle validation
+		// Create user based on role
 		std::unique_ptr<User> newUser;
 		
 		if (roleChoice == 1)
@@ -139,13 +139,13 @@ void Administrator::createNewUser()
 		else if (roleChoice == 2)
 		{
 			newUser = std::make_unique<BookingAgent>(username, password);
-			return;
 		}
 		else if (roleChoice == 3)
 		{
 			newUser = std::make_unique<Passenger>(username, password);
-			return;
 		}
+		
+		ui->printSuccess("User created successfully!");
 	}
 	catch (const UserException& e)
 	{
@@ -176,14 +176,13 @@ void Administrator::viewAllUsers()
 		else
 		{
 			vector<string> headers = {
-				"User ID", "Username", "Name", "Role", "Email"
+				"Username", "Full Name", "Role", "Email", "Phone"
 			};
 			
 			vector<vector<string>> rows;
 			
-			for (const auto& [userId, userData] : usersData.items())
+			for (const auto& [username, userData] : usersData.items())
 			{
-				string username = userData.value("username", "N/A");
 				string name = userData.value("name", "N/A");
 				int roleInt = userData.value("role", 0);
 				string role;
@@ -205,8 +204,9 @@ void Administrator::viewAllUsers()
 				}
 				
 				string email = userData.value("email", "N/A");
+				string phone = userData.value("phoneNumber", "N/A");
 				
-				rows.push_back({formatUserId(std::stoi(userId)), username, name, role, email});
+				rows.push_back({username, name, role, email, phone});
 			}
 			
 			ui->displayTable(headers, rows);
@@ -230,15 +230,16 @@ void Administrator::modifyUserInfo()
 	{
 		string username = ui->getString("Enter username of user to modify: ");
 		
-		auto userIdOpt = User::findUserIdByUsername(username);
-		if (!userIdOpt)
+		// Check if user exists
+		json usersData = User::loadallUsersData();
+		if (!usersData.contains(username))
 		{
 			ui->printError("User not found.");
 			ui->pauseScreen();
 			return;
 		}
 				
-		std::unique_ptr<User> user = User::createUserFromId(*userIdOpt);
+		std::unique_ptr<User> user = User::createUserObject(username);
 		
 		ui->println("\nCurrent Information:");
 		ui->println("Name: " + user->getName());
@@ -310,8 +311,9 @@ void Administrator::deleteUser()
 			return;
 		}
 		
-		auto userIdOpt = User::findUserIdByUsername(username);		
-		if (!userIdOpt)
+		// Check if user exists
+		json usersData = User::loadallUsersData();
+		if (!usersData.contains(username))
 		{
 			ui->printError("User not found.");
 			ui->pauseScreen();
@@ -321,11 +323,8 @@ void Administrator::deleteUser()
 		bool confirm = ui->getYesNo("Are you sure you want to delete user '" + username + "'?");
 		if (confirm)
 		{
-			json usersData = User::loadallUsersData();
-			string userKey = std::to_string(*userIdOpt);
-			usersData.erase(userKey);
+			usersData.erase(username);
 			User::saveallUsersData(usersData);
-			usernameIndex.erase(username);
 			
 			ui->printSuccess("User '" + username + "' has been deleted successfully.");
 		}

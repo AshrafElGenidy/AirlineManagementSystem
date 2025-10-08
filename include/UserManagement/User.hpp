@@ -5,7 +5,6 @@
 #include <exception>
 #include <optional>
 #include <memory>
-#include <unordered_map>
 #include "json.hpp"
 #include "UserInterface.hpp"
 
@@ -32,13 +31,11 @@ enum class UserErrorCode
 class User
 {
 protected:
-	int userId;
+	string username;
 	
 	// Static data members
 	static UserInterface* ui;
 	static string usersFilePath;
-	static int nextUserId;
-	static std::unordered_map<string, int> usernameIndex;  // username -> userId map  for O(1) lookups
 	
 	// Validation constants
 	static constexpr int MIN_USERNAME_LENGTH = 3;
@@ -53,10 +50,8 @@ protected:
 	void updateUserData(const json& updates);
 
 	// Helpers
-	static string formatUserId(int id);
 	static string hashPassword(const string& password);
-	static std::optional<int> findUserIdByUsername(const string& username) noexcept;
-	static std::unique_ptr<User> createUserFromId(const int& userId);
+	static std::unique_ptr<User> createUserObject(const string& username);
 	
 	// Validation methods
 	static bool validateUsername(const string& username);
@@ -65,7 +60,7 @@ protected:
 
 	// Constructors
 	User(const string& username, const string& password, UserRole role);	// For new Users
-	explicit User(const int& userId);										// for existing users
+	explicit User(const string& username);									// for existing users
 	
 public:
 	// Static system initialization
@@ -85,8 +80,7 @@ public:
 	void setPhoneNumber(const string& phoneNumber);
 
 	// Getters
-	string getUserId() const noexcept;
-	string getUsername() const;
+	string getUsername() const noexcept;
 	string getName() const;
 	UserRole getRole() const;
 	string getEmail() const;

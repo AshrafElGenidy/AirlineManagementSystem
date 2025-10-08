@@ -14,12 +14,10 @@
 // Static member initialization
 UserInterface* User::ui = nullptr;
 string User::usersFilePath = "Databases/Users.json";
-int User::nextUserId = 1;
-std::unordered_map<string, int> User::usernameIndex;
 
 // ==================== Constructors ====================
 
-User::User(const string& username, const string& password, UserRole role)
+User::User(const string& username, const string& password, UserRole role) : username(username)
 {
 	// Validate username
 	if (!validateUsername(username))
@@ -39,40 +37,35 @@ User::User(const string& username, const string& password, UserRole role)
 	// Load existing users data
 	json usersData = loadallUsersData();
 	
-	// Check if username already exists using index
-	if (usernameIndex.find(username) != usernameIndex.end())
+	// Check if username already exists
+	if (usersData.contains(username))
 	{
 		throw UserException(UserErrorCode::USERNAME_TAKEN, "Username '" + username + "' is already taken.");
 	}
 	
-	this->userId = nextUserId++;
-	
 	// Create user entry in JSON
+	ui->println("\n--- Enter User Details ---");
 	json userData;
-	userData["username"] = username;
 	userData["passwordHash"] = hashPassword(password);
 	userData["role"] = static_cast<int>(role);
-	userData["name"] = "";
-	userData["email"] = "";
-	userData["phoneNumber"] = "";
+	userData["name"] =  ui->getString("Enter full name: ");;
+	userData["email"] =  ui->getString("Enter email address: ");;
+	userData["phoneNumber"] = ui->getString("Enter phone number: ");
 	
-	// Save to file (use integer key directly in JSON)
-	usersData[std::to_string(this->userId)] = userData;
+	// Save to file
+	usersData[this->username] = userData;
 	saveallUsersData(usersData);
-
-	// Update username index
-	usernameIndex[username] = this->userId;
 	
-	ui->printSuccess("User '" + username + "' registered successfully with ID: " + formatUserId(userId));
+	ui->printSuccess("User '" + username + "' registered successfully.");
 }
 
-User::User(const int& userId) : userId(userId)
+User::User(const string& username) : username(username)
 {
 	// Load user data to verify user exists
 	json userData = getUserData();
 	if (userData.empty())
 	{
-		throw UserException(UserErrorCode::USER_NOT_FOUND, "User " + formatUserId(userId) + " does not exist.");
+		throw UserException(UserErrorCode::USER_NOT_FOUND, "User '" + username + "' does not exist.");
 	}
 }
 
@@ -102,41 +95,28 @@ bool User::validatePassword(const string& password)
 
 // ==================== Authentication ====================
 
-std::optional<int> User::findUserIdByUsername(const string& username) noexcept
-{
-	auto it = usernameIndex.find(username);
-	
-	if (it != usernameIndex.end())
-	{
-		return it->second;
-	}
-	
-	return std::nullopt;
-}
-
-std::unique_ptr<User> User::createUserFromId(const int& userId)
+std::unique_ptr<User> User::createUserObject(const string& username)
 {
 	json usersData = loadallUsersData();
-	string userKey = std::to_string(userId);
 	
 	// Check if user exists
-	if (!usersData.contains(userKey))
+	if (!usersData.contains(username))
 	{
-		throw UserException(UserErrorCode::USER_NOT_FOUND, "User " + formatUserId(userId) + " not found in database.");
+		throw UserException(UserErrorCode::USER_NOT_FOUND, "User '" + username + "' not found in database.");
 	}
 	
-	const json& userData = usersData[userKey];
+	const json& userData = usersData[username];
 	UserRole role = static_cast<UserRole>(userData["role"].get<int>());
 	
 	// Create appropriate subclass based on role using unique_ptr
 	switch(role)
 	{
 		case UserRole::ADMINISTRATOR:
-			return std::make_unique<Administrator>(userId);
+			return std::make_unique<Administrator>(username);
 		case UserRole::BOOKING_AGENT:
-			return std::make_unique<BookingAgent>(userId);
+			return std::make_unique<BookingAgent>(username);
 		case UserRole::PASSENGER:
-			return std::make_unique<Passenger>(userId);
+			return std::make_unique<Passenger>(username);
 		default:
 			throw UserException(UserErrorCode::DATABASE_ERROR, "Unknown user role.");
 	}
@@ -145,16 +125,16 @@ std::unique_ptr<User> User::createUserFromId(const int& userId)
 // validates credentials and returns User object
 std::unique_ptr<User> User::login(const string& username, const string& password)
 {
-	// Find user by username using index
-	auto userIdOpt = findUserIdByUsername(username);
+	// Load users data to check if username exists
+	json usersData = loadallUsersData();
 	
-	if (!userIdOpt)
+	if (!usersData.contains(username))
 	{
 		throw UserException(UserErrorCode::INVALID_CREDENTIALS, "Invalid username.");
 	}
 	
 	// Create user object (ownership transferred to unique_ptr)
-	std::unique_ptr<User> user = createUserFromId(*userIdOpt);
+	std::unique_ptr<User> user = createUserObject(username);
 	
 	// Verify password
 	if (!user->verifyPassword(password))
@@ -180,8 +160,6 @@ void User::logout() noexcept
 {
 	try
 	{
-		const json& userData = getUserData();
-		string username = userData["username"];
 		ui->printSuccess("User " + username + " logged out successfully.");
 	}
 	catch (...)
@@ -192,15 +170,9 @@ void User::logout() noexcept
 
 // ==================== Getters ====================
 
-string User::getUserId() const noexcept
+string User::getUsername() const noexcept
 {
-	return formatUserId(userId);
-}
-
-string User::getUsername() const
-{
-	const json& userData = getUserData();
-	return userData["username"];
+	return username;
 }
 
 string User::getName() const
@@ -302,45 +274,36 @@ void User::saveallUsersData(const json& data)
 json User::getUserData() const
 {
 	json usersData = loadallUsersData();
-	string userKey = std::to_string(userId);
 	
-	if (!usersData.contains(userKey))
+	if (!usersData.contains(username))
 	{
-		throw UserException(UserErrorCode::USER_NOT_FOUND, "User " + formatUserId(userId) + " not found in database.");
+		throw UserException(UserErrorCode::USER_NOT_FOUND, "User '" + username + "' not found in database.");
 	}
 	
-	return usersData[userKey];
+	return usersData[username];
 }
 
 void User::updateUserData(const json& updates)
 {
 	json usersData = loadallUsersData();
-	string userKey = std::to_string(userId);
 	
-	if (usersData.contains(userKey))
+	if (usersData.contains(username))
 	{
 		// Merge updates into existing user data
 		for (const auto& [key, value] : updates.items())
 		{
-			usersData[userKey][key] = value;
+			usersData[username][key] = value;
 		}
 		
 		saveallUsersData(usersData);
 	}
 	else
 	{
-		throw UserException(UserErrorCode::USER_NOT_FOUND, "User " + formatUserId(userId) + " not found in database.");
+		throw UserException(UserErrorCode::USER_NOT_FOUND, "User '" + username + "' not found in database.");
 	}
 }
 
 // ==================== Helpers ====================
-
-string User::formatUserId(int id)
-{
-	std::stringstream ss;
-	ss << "USER" << std::setw(3) << std::setfill('0') << id;
-	return ss.str();
-}
 
 string User::hashPassword(const string& password)
 {
@@ -368,38 +331,15 @@ void User::initializeUserSystem()
 	{
 		json emptyData = json::object();
 		saveallUsersData(emptyData);
-		nextUserId = 1;  // Start from 1 for new database
 	}
 	else
 	{
 		testFile.close();
-		
-		// Load existing data and find the max ID
-		json usersData = loadallUsersData();
-		int maxId = 0;
-		
-		for (const auto& [key, value] : usersData.items())
-		{
-			// find max ID
-			int id = std::stoi(key);
-			if (id > maxId)
-			{
-				maxId = id;
-			}
-
-			// update usernameIndex
-			string username = value.value("username", "");
-			if (!username.empty())
-			{
-				usernameIndex[username] = id;
-			}
-		}
-		
-		nextUserId = maxId + 1;  // Set to next available ID
 	}
 	
 	// Check if this is first-time setup (no users in database)
-	if (usernameIndex.empty())
+	json usersData = loadallUsersData();
+	if (usersData.empty())
 	{
 		ui->printHeader("FIRST TIME SETUP");
 		ui->println("No users found in the system.");
