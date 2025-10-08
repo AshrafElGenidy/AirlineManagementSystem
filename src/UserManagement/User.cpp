@@ -52,6 +52,7 @@ User::User(const string& username, const string& password, UserRole role)
 	userData["username"] = username;
 	userData["passwordHash"] = hashPassword(password);
 	userData["role"] = static_cast<int>(role);
+	userData["name"] = "";
 	userData["email"] = "";
 	userData["phoneNumber"] = "";
 	
@@ -86,18 +87,17 @@ bool User::validateUsername(const string& username)
 	}
 	
 	// Check characters (alphanumeric and underscore only)
-	auto validChar =  [](char c) 
+	auto isValidChar =  [](char c) 
 	{
 		return std::isalnum(static_cast<unsigned char>(c)) || c == '_';
 	};
 
-	return std::all_of(username.begin(), username.end(), validChar);
+	return std::all_of(username.begin(), username.end(), isValidChar);
 }
 
 bool User::validatePassword(const string& password)
 {
-	// Check minimum length
-	return password.length() >= MIN_PASSWORD_LENGTH;
+	return (password.length() > MIN_PASSWORD_LENGTH && password.length() < MAX_PASSWORD_LENGTH);
 }
 
 // ==================== Authentication ====================
@@ -159,11 +159,11 @@ std::unique_ptr<User> User::login(const string& username, const string& password
 	// Verify password
 	if (!user->verifyPassword(password))
 	{
-		throw UserException(UserErrorCode::INVALID_CREDENTIALS, "Invalid password.");
+		throw UserException(UserErrorCode::INVALID_CREDENTIALS, "Incorrect password.");
 	}
 	
 	// Successful login
-	ui->printSuccess("Login successful! Welcome, " + user->getUsername());
+	ui->printSuccess("Login successful! Welcome, " + user->getName());
 	return user;
 }
 
@@ -203,6 +203,12 @@ string User::getUsername() const
 	return userData["username"];
 }
 
+string User::getName() const
+{
+	const json& userData = getUserData();
+	return userData["name"];
+}
+
 UserRole User::getRole() const
 {
 	const json& userData = getUserData();
@@ -223,6 +229,14 @@ string User::getPhoneNumber() const
 }
 
 // ==================== Setters ====================
+
+void User::setName(const string& name)
+{
+	json updates;
+	updates["name"] = name;
+	updateUserData(updates);
+}
+
 
 void User::setEmail(const string& email)
 {
@@ -321,29 +335,6 @@ void User::updateUserData(const json& updates)
 
 // ==================== Helpers ====================
 
-void User::rebuildUsernameIndex()
-{
-	usernameIndex.clear();
-	json usersData = loadallUsersData();
-	
-	for (const auto& [userKey, userData] : usersData.items())
-	{
-		string username = userData.value("username", "");
-		if (!username.empty())
-		{
-			try
-			{
-				int id = std::stoi(userKey);
-				usernameIndex[username] = id;
-			}
-			catch (...)
-			{
-				// Skip invalid user keys
-			}
-		}
-	}
-}
-
 string User::formatUserId(int id)
 {
 	std::stringstream ss;
@@ -351,13 +342,8 @@ string User::formatUserId(int id)
 	return ss.str();
 }
 
-// ==================== User Creation ====================
-
-// Simple password hashing (in production, use bcrypt or similar)
 string User::hashPassword(const string& password)
 {
-	// Simple hash implementation - XOR with constant and convert to hex
-	// NOTE: This is NOT secure - use proper hashing in production!
 	std::stringstream ss;
 	const int salt = 12345;
 	
@@ -394,25 +380,22 @@ void User::initializeUserSystem()
 		
 		for (const auto& [key, value] : usersData.items())
 		{
-			// Parse integer keys directly
-			try
+			// find max ID
+			int id = std::stoi(key);
+			if (id > maxId)
 			{
-				int id = std::stoi(key);
-				if (id > maxId)
-				{
-					maxId = id;
-				}
+				maxId = id;
 			}
-			catch (...)
+
+			// update usernameIndex
+			string username = value.value("username", "");
+			if (!username.empty())
 			{
-				// Skip invalid IDs
+				usernameIndex[username] = id;
 			}
 		}
 		
 		nextUserId = maxId + 1;  // Set to next available ID
-		
-		// Build username index for O(1) lookups
-		rebuildUsernameIndex();
 	}
 	
 	// Check if this is first-time setup (no users in database)

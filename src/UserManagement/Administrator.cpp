@@ -12,12 +12,12 @@ Administrator::Administrator(const string& username, const string& password): Us
 	system = AirlineManagementSystem::getInstance();
 }
 
-Administrator::Administrator(const string& userId): User(userId)
+Administrator::Administrator(const int& userId): User(userId)
 {
 	// Verify this user is actually an administrator
 	if (getRole() != UserRole::ADMINISTRATOR)
 	{
-		throw UserException(UserErrorCode::INVALID_CREDENTIALS, "User " + userId + " is not an Administrator.");
+		throw UserException(UserErrorCode::INVALID_CREDENTIALS, "User " + std::to_string(userId) + " is not an Administrator.");
 	}
 	
 	system = AirlineManagementSystem::getInstance();
@@ -143,8 +143,7 @@ void Administrator::createNewUser()
 		}
 		else if (roleChoice == 3)
 		{
-			string name = ui->getString("Enter passenger name: ");
-			newUser = std::make_unique<Passenger>(username, password, name);
+			newUser = std::make_unique<Passenger>(username, password);
 			return;
 		}
 	}
@@ -207,7 +206,7 @@ void Administrator::viewAllUsers()
 				
 				string email = userData.value("email", "N/A");
 				
-				rows.push_back({userId, username, name, role, email});
+				rows.push_back({formatUserId(std::stoi(userId)), username, name, role, email});
 			}
 			
 			ui->displayTable(headers, rows);
@@ -322,10 +321,11 @@ void Administrator::deleteUser()
 		bool confirm = ui->getYesNo("Are you sure you want to delete user '" + username + "'?");
 		if (confirm)
 		{
-			json usersData = User::loadallUsersData();			
-			usersData.erase(*userIdOpt);
+			json usersData = User::loadallUsersData();
+			string userKey = std::to_string(*userIdOpt);
+			usersData.erase(userKey);
 			User::saveallUsersData(usersData);
-			User::rebuildUsernameIndex();
+			usernameIndex.erase(username);
 			
 			ui->printSuccess("User '" + username + "' has been deleted successfully.");
 		}

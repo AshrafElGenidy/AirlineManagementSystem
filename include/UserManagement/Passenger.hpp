@@ -25,8 +25,9 @@ private:
     int loyaltyPoints;
     PassengerPreferences preferences;
 
+    Passenger(const std::string& username, const std::string& password);
+
 public:
-    Passenger(const std::string& username, const std::string& password, const std::string& name);
     
     void displayMenu() override;
     void handleMenuChoice(int choice) override;
@@ -37,6 +38,8 @@ public:
     void checkInMenu();
     void earnLoyaltyPoints(int points);
     double redeemLoyaltyPoints(int points);
+	
+	friend class User;
 };
 
 #endif // PASSENGER_HPP

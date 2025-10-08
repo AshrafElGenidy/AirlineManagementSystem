@@ -9,8 +9,8 @@ private:
     double commissionRate;
     int totalBookings;
 
-public:
     BookingAgent(const std::string& username, const std::string& password);
+public:
     
     void displayMenu() override;
     void handleMenuChoice(int choice) override;
@@ -20,6 +20,8 @@ public:
     void modifyReservationMenu();
     void cancelReservationMenu();
     bool processRefund(const std::string& reservationId, double amount);
+	
+	friend class User;
 };
 
 #endif // BOOKING_AGENT_HPP

@@ -22,14 +22,17 @@ private:
 	void deleteUser();
 	void modifyUserInfo();
 
-public:
 	// Constructors
 	Administrator(const string& username, const string& password);
-	explicit Administrator(const string& userId);
+	explicit Administrator(const int& userId);
+
+public:
 	
 	// Override pure virtual methods from User
 	void displayMenu() override;
 	void handleMenuChoice(int choice) override;	
+	
+	friend class User;
 };
 
 #endif // ADMINISTRATOR_HPP

@@ -38,12 +38,13 @@ protected:
 	static UserInterface* ui;
 	static string usersFilePath;
 	static int nextUserId;
-	static std::unordered_map<string, int> usernameIndex;  // username -> userId map
+	static std::unordered_map<string, int> usernameIndex;  // username -> userId map  for O(1) lookups
 	
 	// Validation constants
 	static constexpr int MIN_USERNAME_LENGTH = 3;
 	static constexpr int MAX_USERNAME_LENGTH = 20;
-	static constexpr int MIN_PASSWORD_LENGTH = 6;
+	static constexpr int MIN_PASSWORD_LENGTH = 8;
+	static constexpr int MAX_PASSWORD_LENGTH = 30;
 	
 	// JSON operations
 	static json loadallUsersData();
@@ -52,45 +53,46 @@ protected:
 	void updateUserData(const json& updates);
 
 	// Helpers
-	static void rebuildUsernameIndex();
 	static string formatUserId(int id);
 	static string hashPassword(const string& password);
+	static std::optional<int> findUserIdByUsername(const string& username) noexcept;
+	static std::unique_ptr<User> createUserFromId(const int& userId);
 	
 	// Validation methods
 	static bool validateUsername(const string& username);
 	static bool validatePassword(const string& password);
 	bool verifyPassword(const string& password);
-	
-public:
+
 	// Constructors
 	User(const string& username, const string& password, UserRole role);	// For new Users
-	explicit User(const int& userId);									// for existing users
+	explicit User(const int& userId);										// for existing users
 	
-	virtual ~User() noexcept = default;
-	
-	// Functions to be handled by child classes
-	virtual void displayMenu() = 0;
-	virtual void handleMenuChoice(int choice) = 0;
+public:
+	// Static system initialization
+	static void initializeUserSystem();
 	
 	// Authentication methods
-	[[nodiscard]] static std::optional<int> findUserIdByUsername(const string& username) noexcept;
-	[[nodiscard]] static std::unique_ptr<User> createUserFromId(const int& userId);
 	[[nodiscard]] static std::unique_ptr<User> login(const string& username, const string& password);
 	void logout() noexcept;
 	
+	// Operational methods
+	virtual void displayMenu() = 0;
+	virtual void handleMenuChoice(int choice) = 0;
+	
+	// Setters
+	void setName(const string& name);
+	void setEmail(const string& email);
+	void setPhoneNumber(const string& phoneNumber);
+
 	// Getters
 	string getUserId() const noexcept;
 	string getUsername() const;
+	string getName() const;
 	UserRole getRole() const;
 	string getEmail() const;
 	string getPhoneNumber() const;
 	
-	// Setters
-	void setEmail(const string& email);
-	void setPhoneNumber(const string& phoneNumber);
-	
-	// Static initialization
-	static void initializeUserSystem();
+	virtual ~User() noexcept = default;
 };
 
 class UserException : public std::exception
