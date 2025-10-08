@@ -15,7 +15,7 @@
 UserInterface* User::ui = nullptr;
 string User::usersFilePath = "Databases/Users.json";
 int User::nextUserId = 1;
-std::unordered_map<string, string> User::usernameIndex;
+std::unordered_map<string, int> User::usernameIndex;
 
 // ==================== Constructors ====================
 
@@ -45,38 +45,33 @@ User::User(const string& username, const string& password, UserRole role)
 		throw UserException(UserErrorCode::USERNAME_TAKEN, "Username '" + username + "' is already taken.");
 	}
 	
-	this->userId = generateUserId();
+	this->userId = nextUserId++;
 	
 	// Create user entry in JSON
 	json userData;
 	userData["username"] = username;
 	userData["passwordHash"] = hashPassword(password);
 	userData["role"] = static_cast<int>(role);
-	userData["name"] = "";
 	userData["email"] = "";
 	userData["phoneNumber"] = "";
 	
-	// Save to file
-	usersData[this->userId] = userData;
+	// Save to file (use integer key directly in JSON)
+	usersData[std::to_string(this->userId)] = userData;
 	saveallUsersData(usersData);
 
-	// Update Static Data
-	usernameIndex[username] = this->userId;	
-	cachedUserData = userData;
+	// Update username index
+	usernameIndex[username] = this->userId;
 	
-	ui->printSuccess("User '" + username + "' registered successfully with ID: " + userId);
+	ui->printSuccess("User '" + username + "' registered successfully with ID: " + formatUserId(userId));
 }
 
-User::User(const string& userId) : userId(userId)
+User::User(const int& userId) : userId(userId)
 {
-	// Initialize UI reference
-	ui = UserInterface::getInstance();
-	
-	// Load and cache user data
+	// Load user data to verify user exists
 	json userData = getUserData();
 	if (userData.empty())
 	{
-		throw UserException(UserErrorCode::USER_NOT_FOUND, "User " + string(userId) + " does not exist.");
+		throw UserException(UserErrorCode::USER_NOT_FOUND, "User " + formatUserId(userId) + " does not exist.");
 	}
 }
 
@@ -107,7 +102,7 @@ bool User::validatePassword(const string& password)
 
 // ==================== Authentication ====================
 
-std::optional<string> User::findUserIdByUsername(const string& username) noexcept
+std::optional<int> User::findUserIdByUsername(const string& username) noexcept
 {
 	auto it = usernameIndex.find(username);
 	
@@ -119,17 +114,18 @@ std::optional<string> User::findUserIdByUsername(const string& username) noexcep
 	return std::nullopt;
 }
 
-std::unique_ptr<User> User::createUserFromId(const string& userId)
+std::unique_ptr<User> User::createUserFromId(const int& userId)
 {
 	json usersData = loadallUsersData();
+	string userKey = std::to_string(userId);
 	
 	// Check if user exists
-	if (!usersData.contains(userId))
+	if (!usersData.contains(userKey))
 	{
-		throw UserException(UserErrorCode::USER_NOT_FOUND, "User " + userId + " not found in database.");
+		throw UserException(UserErrorCode::USER_NOT_FOUND, "User " + formatUserId(userId) + " not found in database.");
 	}
 	
-	const json& userData = usersData[userId];
+	const json& userData = usersData[userKey];
 	UserRole role = static_cast<UserRole>(userData["role"].get<int>());
 	
 	// Create appropriate subclass based on role using unique_ptr
@@ -167,7 +163,7 @@ std::unique_ptr<User> User::login(const string& username, const string& password
 	}
 	
 	// Successful login
-	ui->printSuccess("Login successful! Welcome, " + user->getName());
+	ui->printSuccess("Login successful! Welcome, " + user->getUsername());
 	return user;
 }
 
@@ -198,83 +194,35 @@ void User::logout() noexcept
 
 string User::getUserId() const noexcept
 {
-	return userId;
+	return formatUserId(userId);
 }
 
-string User::getUsername() const noexcept
+string User::getUsername() const
 {
-	try
-	{
-		const json& userData = getUserData();
-		return userData.value("username", "");
-	}
-	catch (...)
-	{
-		return "";
-	}
+	const json& userData = getUserData();
+	return userData["username"];
 }
 
-string User::getName() const noexcept
+UserRole User::getRole() const
 {
-	try
-	{
-		const json& userData = getUserData();
-		return userData.value("name", "");
-	}
-	catch (...)
-	{
-		return "";
-	}
+	const json& userData = getUserData();
+	int roleInt = userData["role"];
+	return static_cast<UserRole>(roleInt);
 }
 
-UserRole User::getRole() const noexcept
+string User::getEmail() const
 {
-	try
-	{
-		const json& userData = getUserData();
-		int roleInt = userData.value("role", 0);
-		return static_cast<UserRole>(roleInt);
-	}
-	catch (...)
-	{
-		UserException(UserErrorCode::DATABASE_ERROR, "Unknown user role.");
-	}
+	const json& userData = getUserData();
+	return userData["email"];
 }
 
-string User::getEmail() const noexcept
+string User::getPhoneNumber() const
 {
-	try
-	{
-		const json& userData = getUserData();
-		return userData.value("email", "");
-	}
-	catch (...)
-	{
-		return "";
-	}
-}
-
-string User::getPhoneNumber() const noexcept
-{
-	try
-	{
-		const json& userData = getUserData();
-		return userData.value("phoneNumber", "");
-	}
-	catch (...)
-	{
-		return "";
-	}
+	const json& userData = getUserData();
+	return userData["phoneNumber"];
 }
 
 // ==================== Setters ====================
-
-void User::setName(const string& name)
-{
-	json updates;
-	updates["name"] = name;
-	updateUserData(updates);
-}
 
 void User::setEmail(const string& email)
 {
@@ -339,83 +287,71 @@ void User::saveallUsersData(const json& data)
 
 json User::getUserData() const
 {
-	// Return cached data if available
-	if (cachedUserData)
-	{
-		return *cachedUserData;
-	}
-	
-	// Load from file and cache
 	json usersData = loadallUsersData();
+	string userKey = std::to_string(userId);
 	
-	if (usersData.contains(userId))
+	if (!usersData.contains(userKey))
 	{
-		cachedUserData = usersData[userId];
-		return *cachedUserData;
+		throw UserException(UserErrorCode::USER_NOT_FOUND, "User " + formatUserId(userId) + " not found in database.");
 	}
 	
-	// Return empty object if user not found
-	return json::object();
+	return usersData[userKey];
 }
 
 void User::updateUserData(const json& updates)
 {
 	json usersData = loadallUsersData();
+	string userKey = std::to_string(userId);
 	
-	if (usersData.contains(userId))
+	if (usersData.contains(userKey))
 	{
 		// Merge updates into existing user data
 		for (const auto& [key, value] : updates.items())
 		{
-			usersData[userId][key] = value;
+			usersData[userKey][key] = value;
 		}
 		
 		saveallUsersData(usersData);
-		
-		// Invalidate cache so next read gets fresh data
-		invalidateCache();
 	}
 	else
 	{
-		throw UserException(UserErrorCode::USER_NOT_FOUND, "User " + userId + " not found in database.");
+		throw UserException(UserErrorCode::USER_NOT_FOUND, "User " + formatUserId(userId) + " not found in database.");
 	}
 }
 
 // ==================== Helpers ====================
-
-void User::invalidateCache()
-{
-	cachedUserData = std::nullopt;
-}
 
 void User::rebuildUsernameIndex()
 {
 	usernameIndex.clear();
 	json usersData = loadallUsersData();
 	
-	for (const auto& [userId, userData] : usersData.items())
+	for (const auto& [userKey, userData] : usersData.items())
 	{
 		string username = userData.value("username", "");
 		if (!username.empty())
 		{
-			usernameIndex[username] = userId;
+			try
+			{
+				int id = std::stoi(userKey);
+				usernameIndex[username] = id;
+			}
+			catch (...)
+			{
+				// Skip invalid user keys
+			}
 		}
 	}
 }
 
-// ==================== User Creation ====================
-
-string User::generateUserId()
+string User::formatUserId(int id)
 {
-	// Use the pre-calculated nextUserId from initialization
 	std::stringstream ss;
-	ss << "USER" << std::setw(3) << std::setfill('0') << nextUserId;
-	
-	// Increment for next user
-	nextUserId++;
-	
+	ss << "USER" << std::setw(3) << std::setfill('0') << id;
 	return ss.str();
 }
+
+// ==================== User Creation ====================
 
 // Simple password hashing (in production, use bcrypt or similar)
 string User::hashPassword(const string& password)
@@ -458,21 +394,18 @@ void User::initializeUserSystem()
 		
 		for (const auto& [key, value] : usersData.items())
 		{
-			// Extract number from "USER###" format
-			if (key.substr(0, 4) == "USER")
+			// Parse integer keys directly
+			try
 			{
-				try
+				int id = std::stoi(key);
+				if (id > maxId)
 				{
-					int id = std::stoi(key.substr(4));
-					if (id > maxId)
-					{
-						maxId = id;
-					}
+					maxId = id;
 				}
-				catch (...)
-				{
-					// Skip invalid IDs
-				}
+			}
+			catch (...)
+			{
+				// Skip invalid IDs
 			}
 		}
 		

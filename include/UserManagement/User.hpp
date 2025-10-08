@@ -32,14 +32,13 @@ enum class UserErrorCode
 class User
 {
 protected:
-	string userId;
-	mutable std::optional<json> cachedUserData;
+	int userId;
 	
 	// Static data members
 	static UserInterface* ui;
 	static string usersFilePath;
 	static int nextUserId;
-	static std::unordered_map<string, string> usernameIndex;  // username -> userId map
+	static std::unordered_map<string, int> usernameIndex;  // username -> userId map
 	
 	// Validation constants
 	static constexpr int MIN_USERNAME_LENGTH = 3;
@@ -54,10 +53,7 @@ protected:
 
 	// Helpers
 	static void rebuildUsernameIndex();
-	void invalidateCache();
-
-	// User Creation
-	static string generateUserId();
+	static string formatUserId(int id);
 	static string hashPassword(const string& password);
 	
 	// Validation methods
@@ -68,7 +64,7 @@ protected:
 public:
 	// Constructors
 	User(const string& username, const string& password, UserRole role);	// For new Users
-	explicit User(const string& userId);										// for existing users
+	explicit User(const int& userId);									// for existing users
 	
 	virtual ~User() noexcept = default;
 	
@@ -77,21 +73,19 @@ public:
 	virtual void handleMenuChoice(int choice) = 0;
 	
 	// Authentication methods
-	[[nodiscard]] static std::optional<string> findUserIdByUsername(const string& username) noexcept;
-	[[nodiscard]] static std::unique_ptr<User> createUserFromId(const string& userId);
+	[[nodiscard]] static std::optional<int> findUserIdByUsername(const string& username) noexcept;
+	[[nodiscard]] static std::unique_ptr<User> createUserFromId(const int& userId);
 	[[nodiscard]] static std::unique_ptr<User> login(const string& username, const string& password);
 	void logout() noexcept;
 	
 	// Getters
 	string getUserId() const noexcept;
-	string getUsername() const noexcept;
-	string getName() const noexcept;
-	UserRole getRole() const noexcept;
-	string getEmail() const noexcept;
-	string getPhoneNumber() const noexcept;
+	string getUsername() const;
+	UserRole getRole() const;
+	string getEmail() const;
+	string getPhoneNumber() const;
 	
 	// Setters
-	void setName(const string& name);
 	void setEmail(const string& email);
 	void setPhoneNumber(const string& phoneNumber);
 	
