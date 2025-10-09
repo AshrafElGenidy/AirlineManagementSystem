@@ -42,6 +42,7 @@ private:
 	static void viewAllFlights();
 	static void updateFlight();
 	static void removeFlight();
+	void updateFlightDetails();
 	
 	// Constructors
 	Flight();										// For new flights

@@ -23,32 +23,25 @@ Flight::Flight()
 	{
 		throw FlightException(FlightErrorCode::INVALID_FLIGHT_NUMBER);
 	}
-	
-	// Set the flight number
+
 	this->flightNumber = flightNumber;
-	
-	// Get flight details from user
-	ui->println("\n--- Enter Flight Details ---");
+
+	ui->println("\n--- Add New Flight ---");
 	string origin = ui->getString("Enter Origin: ");
 	string destination = ui->getString("Enter Destination: ");
 	string departureDateTime = ui->getDate("Enter Departure Date and Time (YYYY-MM-DD HH:MM): ", "YYYY-MM-DD HH:MM");
-	string arrivalDateTime = ui->getDate("Enter Arrival Date and Time (YYYY-MM-DD HH:MM): ",  "YYYY-MM-DD HH:MM");
+	string arrivalDateTime = ui->getDate("Enter Arrival Date and Time (YYYY-MM-DD HH:MM): ", "YYYY-MM-DD HH:MM");
 	string aircraftType = ui->getString("Enter Aircraft Type: ");
 	int totalSeats = ui->getInt("Enter Total Seats: ");
-	
-	// Select flight status
 	string status = selectFlightStatus();
-	
-	// Load existing flights data
-	json flightsData = loadAllFlightsData();
-	
-	// Check if flight number already exists
-	if (flightsData.contains(flightNumber))
+
+	json allFlightsData = loadAllFlightsData();
+
+	if (allFlightsData.contains(flightNumber))
 	{
 		throw FlightException(FlightErrorCode::FLIGHT_EXISTS);
 	}
-	
-	// Create flight entry in JSON
+
 	json flightData;
 	flightData["origin"] = origin;
 	flightData["destination"] = destination;
@@ -61,12 +54,12 @@ Flight::Flight()
 	flightData["gate"] = "N/A";
 	flightData["boardingTime"] = "N/A";
 	flightData["reservedSeats"] = json::array();
-	
-	// Save to file
-	flightsData[this->flightNumber] = flightData;
-	saveAllFlightsData(flightsData);
-	
-	ui->printSuccess("Flight '" + flightNumber + "' created successfully.");
+
+	allFlightsData[this->flightNumber] = flightData;
+	saveAllFlightsData(allFlightsData);
+
+	ui->println("");
+	ui->printSuccess("Flight " + flightNumber + " has been successfully added to the schedule.");
 }
 
 Flight::Flight(const string& flightNumber) : flightNumber(flightNumber)
@@ -105,9 +98,9 @@ void Flight::manageFlights()
 		
 		vector<string> options = {
 			"Add New Flight",
-			"View All Flights",
 			"Update Existing Flight",
 			"Remove Flight",
+			"View All Flights",
 			"Back to Main Menu"
 		};
 		
@@ -120,13 +113,13 @@ void Flight::manageFlights()
 				addFlight();
 				break;
 			case 2:
-				viewAllFlights();
-				break;
-			case 3:
 				updateFlight();
 				break;
-			case 4:
+			case 3:
 				removeFlight();
+				break;
+			case 4:
+				viewAllFlights();
 				break;
 			case 5:
 				return; // Back to main menu
@@ -141,7 +134,7 @@ void Flight::manageFlights()
 void Flight::addFlight()
 {
 	ui->clearScreen();
-	ui->printHeader("ADD NEW FLIGHT");
+	ui->printHeader("Add New Flight");
 	
 	try
 	{
@@ -158,36 +151,30 @@ void Flight::addFlight()
 void Flight::viewAllFlights()
 {
 	ui->clearScreen();
-	ui->printHeader("ALL FLIGHTS");
+	ui->printHeader("View All Flights");
 	
-	json flightsData = loadAllFlightsData();
+	json allFlightsData = loadAllFlightsData();
 	
-	if (flightsData.empty())
+	if (allFlightsData.empty())
 	{
 		ui->printWarning("No flights found in the system.");
 	}
 	else
 	{
 		vector<string> headers = {
-			"Flight Number", "Origin", "Destination", "Departure", "Status", "Total Seats", "Available"
+			"Flight Number", "Origin", "Destination", "Departure", "Status", "Total Seats", "Available Seats"
 		};
 		
 		vector<vector<string>> rows;
 		
-		for (const auto& [flightNum, flightData] : flightsData.items())
+		for (const auto& [flightNum, flightData] : allFlightsData.items())
 		{
 			string origin = flightData.value("origin", "N/A");
 			string destination = flightData.value("destination", "N/A");
 			string departure = flightData.value("departureDateTime", "N/A");
 			string status = flightData.value("status", "N/A");
 			int totalSeats = flightData.value("totalSeats", 0);
-			
-			// Calculate available seats
-			int reserved = 0;
-			if (flightData.contains("reservedSeats"))
-			{
-				reserved = flightData["reservedSeats"].size();
-			}
+			int reserved = flightData.contains("reservedSeats") ? (int)flightData["reservedSeats"].size() : 0;
 			int available = totalSeats - reserved;
 			
 			rows.push_back({
@@ -202,7 +189,7 @@ void Flight::viewAllFlights()
 		}
 		
 		ui->displayTable(headers, rows);
-		ui->println("\nTotal Flights: " + std::to_string(flightsData.size()));
+		ui->println("\nTotal Flights: " + std::to_string(allFlightsData.size()));
 	}
 	
 	ui->pauseScreen();
@@ -211,69 +198,46 @@ void Flight::viewAllFlights()
 void Flight::updateFlight()
 {
 	ui->clearScreen();
-	ui->printHeader("UPDATE EXISTING FLIGHT");
-	
+
 	try
 	{
 		string flightNumber = ui->getString("Enter Flight Number to Update: ");
 		unique_ptr<Flight> flight = std::make_unique<Flight>(flightNumber);
-		
-		// Display current information
-		ui->println("\nCurrent Flight Information:");
-		ui->println("Origin: " + flight->getOrigin());
-		ui->println("Destination: " + flight->getDestination());
-		ui->println("Departure: " + flight->getDepartureDateTime());
-		ui->println("Arrival: " + flight->getArrivalDateTime());
-		ui->println("Aircraft Type: " + flight->getAircraftType());
-		ui->println("Status: " + flight->getStatus());
-		ui->println("Price: $" + std::to_string(flight->getPrice()));
-		ui->println("Gate: " + flight->getGate());
-		ui->println("Boarding Time: " + flight->getBoardingTime());
-		
+
+		ui->println("\nSelect information to update:");
 		vector<string> options = {
+			"Flight Details",
+			"Crew Assignments",   // TODO
 			"Status",
-			"Price",
-			"Gate",
-			"Boarding Time",
-			"Cancel"
+			"Back to Manage Flights"
 		};
-		
-		ui->displayMenu("\nWhat would you like to update?", options);
-		int choice = ui->getChoice("Enter choice: ", 1, 5);
-		
+
+		ui->displayMenu("Update Existing Flight", options);
+		int choice = ui->getChoice("Enter choice: ", 1, 4);
+
 		switch (choice)
 		{
 			case 1:
+				flight->updateFlightDetails();
+				break;
+
+			case 2:
+				// TODO: Implement Crew Assignment logic
+				ui->printWarning("TODO: Crew Assignments not yet implemented.");
+				break;
+
+			case 3:
 			{
 				string newStatus = flight->selectFlightStatus();
 				flight->setStatus(newStatus);
 				ui->printSuccess("Flight status updated successfully.");
 				break;
 			}
-			case 2:
-			{
-				double newPrice = ui->getDouble("Enter new price: ");
-				flight->setPrice(newPrice);
-				ui->printSuccess("Flight price updated successfully.");
-				break;
-			}
-			case 3:
-			{
-				string newGate = ui->getString("Enter new gate: ");
-				flight->setGate(newGate);
-				ui->printSuccess("Gate updated successfully.");
-				break;
-			}
+
 			case 4:
-			{
-				string newBoardingTime = ui->getDate("Enter new boarding time (HH:MM): ", "HH:MM");
-				flight->setBoardingTime(newBoardingTime);
-				ui->printSuccess("Boarding time updated successfully.");
+				ui->println("Returning to Manage Flights menu.");
 				break;
-			}
-			case 5:
-				ui->printWarning("Update canceled.");
-				break;
+
 			default:
 				ui->printError("Invalid choice.");
 				break;
@@ -283,22 +247,114 @@ void Flight::updateFlight()
 	{
 		ui->printError(string(e.what()));
 	}
-	
+
 	ui->pauseScreen();
 }
+
+// ==================== Update Flight Details ====================
+
+void Flight::updateFlightDetails()
+{
+	ui->clearScreen();
+	ui->printHeader("--- Update Flight Details ---");
+
+	json allFlightsData = loadAllFlightsData();
+
+	if (!allFlightsData.contains(flightNumber))
+	{
+		throw FlightException(FlightErrorCode::FLIGHT_NOT_FOUND);
+	}
+
+	json flightData = allFlightsData[flightNumber];
+
+	ui->println("Current Flight Information:");
+	ui->println("1. Origin: " + flightData.value("origin", "N/A"));
+	ui->println("2. Destination: " + flightData.value("destination", "N/A"));
+	ui->println("3. Departure: " + flightData.value("departureDateTime", "N/A"));
+	ui->println("4. Arrival: " + flightData.value("arrivalDateTime", "N/A"));
+	ui->println("5. Aircraft Type: " + flightData.value("aircraftType", "N/A"));
+	ui->println("6. Total Seats: " + std::to_string(flightData.value("totalSeats", 0)));
+	ui->println("7. Back to Previous Menu\n");
+
+	int choice = ui->getChoice("Select field to update (1-7): ", 1, 7);
+
+	if (choice == 7)
+	{
+		ui->printWarning("Returning to previous menu.");
+		return;
+	}
+
+	try
+	{
+		switch (choice)
+		{
+			case 1:
+			{
+				string newOrigin = ui->getString("Enter new Origin: ");
+				flightData["origin"] = newOrigin;
+				break;
+			}
+			case 2:
+			{
+				string newDestination = ui->getString("Enter new Destination: ");
+				flightData["destination"] = newDestination;
+				break;
+			}
+			case 3:
+			{
+				string newDeparture = ui->getDate("Enter new Departure Date and Time (YYYY-MM-DD HH:MM): ", "YYYY-MM-DD HH:MM");
+				flightData["departureDateTime"] = newDeparture;
+				break;
+			}
+			case 4:
+			{
+				string newArrival = ui->getDate("Enter new Arrival Date and Time (YYYY-MM-DD HH:MM): ", "YYYY-MM-DD HH:MM");
+				flightData["arrivalDateTime"] = newArrival;
+				break;
+			}
+			case 5:
+			{
+				string newAircraftType = ui->getString("Enter new Aircraft Type: ");
+				flightData["aircraftType"] = newAircraftType;
+				break;
+			}
+			case 6:
+			{
+				int newTotalSeats = ui->getInt("Enter new Total Seats: ");
+				flightData["totalSeats"] = newTotalSeats;
+				break;
+			}
+			default:
+				ui->printError("Invalid choice.");
+				return;
+		}
+
+		// Save updates
+		allFlightsData[flightNumber] = flightData;
+		saveAllFlightsData(allFlightsData);
+		ui->printSuccess("Flight details updated successfully.");
+	}
+	catch (const std::exception& e)
+	{
+		ui->printError("Error updating flight details: " + string(e.what()));
+	}
+
+	ui->pauseScreen();
+}
+
 
 void Flight::removeFlight()
 {
 	ui->clearScreen();
-	ui->printHeader("REMOVE FLIGHT");
+	ui->printHeader("Remove Flight");
 	
 	try
 	{
 		string flightNumber = ui->getString("Enter Flight Number to Remove: ");
 		
 		// Check if flight exists
-		json flightsData = loadAllFlightsData();
-		if (!flightsData.contains(flightNumber))
+		json allFlightsData = loadAllFlightsData();
+		if (!allFlightsData.contains(flightNumber))
 		{
 			throw FlightException(FlightErrorCode::FLIGHT_NOT_FOUND);
 		}
@@ -306,8 +362,8 @@ void Flight::removeFlight()
 		bool confirm = ui->getYesNo("Are you sure you want to remove flight '" + flightNumber + "'?");
 		if (confirm)
 		{
-			flightsData.erase(flightNumber);
-			saveAllFlightsData(flightsData);
+			allFlightsData.erase(flightNumber);
+			saveAllFlightsData(allFlightsData);
 			
 			ui->printSuccess("Flight '" + flightNumber + "' has been removed successfully.");
 		}
@@ -488,28 +544,28 @@ void Flight::saveAllFlightsData(const json& data)
 
 json Flight::getFlightData() const
 {
-	json flightsData = loadAllFlightsData();
+	json allFlightsData = loadAllFlightsData();
 	
-	if (!flightsData.contains(flightNumber))
+	if (!allFlightsData.contains(flightNumber))
 	{
 		throw FlightException(FlightErrorCode::FLIGHT_NOT_FOUND);
 	}
 	
-	return flightsData[flightNumber];
+	return allFlightsData[flightNumber];
 }
 
 void Flight::updateFlightData(const json& updates)
 {
-	json flightsData = loadAllFlightsData();
+	json allFlightsData = loadAllFlightsData();
 	
-	if (flightsData.contains(flightNumber))
+	if (allFlightsData.contains(flightNumber))
 	{
 		for (const auto& [key, value] : updates.items())
 		{
-			flightsData[flightNumber][key] = value;
+			allFlightsData[flightNumber][key] = value;
 		}
 		
-		saveAllFlightsData(flightsData);
+		saveAllFlightsData(allFlightsData);
 	}
 	else
 	{
@@ -560,9 +616,9 @@ vector<unique_ptr<Flight>> Flight::searchFlights(const string& origin,
 													  const string& departureDate)
 {
 	vector<unique_ptr<Flight>> results;
-	json flightsData = loadAllFlightsData();
+	json allFlightsData = loadAllFlightsData();
 	
-	for (const auto& [flightNum, flightData] : flightsData.items())
+	for (const auto& [flightNum, flightData] : allFlightsData.items())
 	{
 		string flightOrigin = flightData.value("origin", "");
 		string flightDestination = flightData.value("destination", "");
