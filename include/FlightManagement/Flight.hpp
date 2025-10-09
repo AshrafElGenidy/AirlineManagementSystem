@@ -2,69 +2,107 @@
 #define FLIGHT_HPP
 
 #include <string>
-#include "SeatMap.hpp"
+#include <vector>
+#include <exception>
+#include <memory>
+#include "json.hpp"
+#include "UserInterface.hpp"
 
-enum class FlightStatus {
-    SCHEDULED,
-    DELAYED,
-    BOARDING,
-    DEPARTED,
-    ARRIVED,
-    CANCELED
-};
+using nlohmann::json;
+using std::string;
+using std::vector;
+using std::unique_ptr;
 
-class SearchCriteria {
-public:
-    std::string origin;
-    std::string destination;
-    std::string departureDate;
-    double maxPrice;
-    
-    SearchCriteria(const std::string& origin, const std::string& destination, 
-                   const std::string& date);
-};
+static constexpr int MIN_FLIGHT_NUMBER_LENGTH = 3;
+static constexpr int MAX_FLIGHT_NUMBER_LENGTH = 10;
 
+// ==================== Flight Class ====================
 
-class Pilot;
-class FlightAttendant;
-
-class Flight {
+class Flight
+{
 private:
-    std::string flightNumber;
-    std::string origin;
-    std::string destination;
-    std::string departureDateTime;
-    std::string arrivalDateTime;
-    std::string aircraftType;
-    FlightStatus status;
-    double price;
-    Pilot* assignedPilot;
-    FlightAttendant* assignedFlightAttendant;
-    SeatMap* seatMap;
-    int totalSeats;
-    std::string gate;
-    std::string boardingTime;
+	string flightNumber;
+	
+	// Static data members
+	static UserInterface* ui;
+	static string flightsFilePath;
+	
+	// JSON operations
+	static json loadAllFlightsData();
+	static void saveAllFlightsData(const json& data);
+	json getFlightData() const;
+	void updateFlightData(const json& updates);
+	
+	// Helpers
+	string selectFlightStatus();
+	static bool validateFlightNumber(const string& flightNumber);
+
+	// Flight Management
+	static void addFlight();
+	static void viewAllFlights();
+	static void updateFlight();
+	static void removeFlight();
+	
+	// Constructors
+	Flight();										// For new flights
+	explicit Flight(const string& flightNumber);	// For existing flights
+	
+public:
+	// Static system initialization
+	static void initializeFlightSystem();
+	
+	// Flight Management
+	static void manageFlights();
+	
+	// Operational methods
+	static vector<unique_ptr<Flight>> searchFlights(const string& origin, const string& destination, const string& departureDate);
+	
+	// Getters
+	string getFlightNumber() const noexcept;
+	string getOrigin() const;
+	string getDestination() const;
+	string getDepartureDateTime() const;
+	string getArrivalDateTime() const;
+	string getAircraftType() const;
+	string getStatus() const;
+	double getPrice() const;
+	int getTotalSeats() const;
+	string getGate() const;
+	string getBoardingTime() const;
+	
+	// Setters
+	void setStatus(const string& status);
+	void setPrice(double price);
+	void setGate(const string& gate);
+	void setBoardingTime(const string& boardingTime);
+	
+	// Utility
+	void displayFlightInfo() const;
+	
+	virtual ~Flight() noexcept = default;
+};
+
+// ==================== Flight Exception Class ====================
+
+enum class FlightErrorCode
+{
+	FLIGHT_NOT_FOUND,
+	FLIGHT_EXISTS,
+	INVALID_FLIGHT_NUMBER,
+	DATABASE_ERROR
+};
+
+class FlightException : public std::exception
+{
+private:
+	FlightErrorCode errorCode;
+	string getErrorMessage() const noexcept;
 
 public:
-    Flight(const std::string& flightNumber, const std::string& origin, 
-           const std::string& destination, const std::string& departureDateTime,
-           const std::string& arrivalDateTime, int totalSeats, double price);
-    
-    std::string getFlightNumber() const;
-    std::string getOrigin() const;
-    std::string getDestination() const;
-    FlightStatus getStatus() const;
-    double getPrice() const;
-    int getTotalSeats() const;
-    int getAvailableSeats() const;
-    
-    void updateStatus(FlightStatus status);
-    bool assignPilot(Pilot* pilot);
-    bool assignFlightAttendant(FlightAttendant* attendant);
-    void displayFlightInfo();
-    bool isSeatAvailable(const std::string& seatNumber) const;
-    bool reserveSeat(const std::string& seatNumber);
-    bool releaseSeat(const std::string& seatNumber);
+	FlightException(FlightErrorCode code);
+	const char* what() const noexcept override;
+	virtual ~FlightException() noexcept = default;
+	FlightErrorCode getErrorCode() const noexcept;
 };
 
 #endif // FLIGHT_HPP
