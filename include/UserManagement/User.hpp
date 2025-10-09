@@ -11,21 +11,17 @@
 using std::string;
 using nlohmann::json;
 
+static constexpr int MIN_USERNAME_LENGTH = 3;
+static constexpr int MAX_USERNAME_LENGTH = 20;
+static constexpr int MIN_PASSWORD_LENGTH = 8;
+static constexpr int MAX_PASSWORD_LENGTH = 30;
+
+// ==================== User Class ====================
+
 enum class UserRole {
 	ADMINISTRATOR,
 	BOOKING_AGENT,
 	PASSENGER
-};
-
-enum class UserErrorCode
-{
-	SUCCESS,
-	USERNAME_TAKEN,
-	INVALID_USERNAME,
-	INVALID_PASSWORD,
-	USER_NOT_FOUND,
-	INVALID_CREDENTIALS,
-	DATABASE_ERROR
 };
 
 class User
@@ -36,13 +32,7 @@ protected:
 	// Static data members
 	static UserInterface* ui;
 	static string usersFilePath;
-	
-	// Validation constants
-	static constexpr int MIN_USERNAME_LENGTH = 3;
-	static constexpr int MAX_USERNAME_LENGTH = 20;
-	static constexpr int MIN_PASSWORD_LENGTH = 8;
-	static constexpr int MAX_PASSWORD_LENGTH = 30;
-	
+		
 	// JSON operations
 	static json loadallUsersData();
 	static void saveallUsersData(const json& data);
@@ -89,14 +79,27 @@ public:
 	virtual ~User() noexcept = default;
 };
 
+// ==================== UserException Class ====================
+
+enum class UserErrorCode
+{
+	USERNAME_TAKEN,
+	INVALID_USERNAME,
+	INVALID_PASSWORD,
+	USER_NOT_FOUND,
+	INCORRECT_PASSWORD,
+	DATABASE_ERROR,
+	INVALID_INPUTS
+};
+
 class UserException : public std::exception
 {
 private:
 	UserErrorCode errorCode;
-	string errorMessage;
+	string getErrorMessage() const noexcept;
 
 public:
-	UserException(UserErrorCode code, const string& message);
+	UserException(UserErrorCode code);
 	const char* what() const noexcept override;
 	virtual ~UserException() noexcept = default;
 	UserErrorCode getErrorCode() const noexcept;

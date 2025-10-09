@@ -17,7 +17,7 @@ Administrator::Administrator(const string& username): User(username)
 	// Verify this user is actually an administrator
 	if (getRole() != UserRole::ADMINISTRATOR)
 	{
-		throw UserException(UserErrorCode::INVALID_CREDENTIALS, "User '" + username + "' is not an Administrator.");
+		throw UserException(UserErrorCode::INVALID_INPUTS);
 	}
 	
 	system = AirlineManagementSystem::getInstance();

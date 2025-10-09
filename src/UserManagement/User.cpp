@@ -22,16 +22,13 @@ User::User(const string& username, const string& password, UserRole role) : user
 	// Validate username
 	if (!validateUsername(username))
 	{
-		throw UserException(UserErrorCode::INVALID_USERNAME, 
-			"Invalid username. Must be " + std::to_string(MIN_USERNAME_LENGTH) + "-" + 
-			std::to_string(MAX_USERNAME_LENGTH) + " characters, alphanumeric and underscore only.");
+		throw UserException(UserErrorCode::INVALID_USERNAME);
 	}
 	
 	// Validate password
 	if (!validatePassword(password))
 	{
-		throw UserException(UserErrorCode::INVALID_PASSWORD, 
-			"Invalid password. Must be at least " + std::to_string(MIN_PASSWORD_LENGTH) + " characters.");
+		throw UserException(UserErrorCode::INVALID_PASSWORD);
 	}
 	
 	// Load existing users data
@@ -40,7 +37,7 @@ User::User(const string& username, const string& password, UserRole role) : user
 	// Check if username already exists
 	if (usersData.contains(username))
 	{
-		throw UserException(UserErrorCode::USERNAME_TAKEN, "Username '" + username + "' is already taken.");
+		throw UserException(UserErrorCode::USERNAME_TAKEN);
 	}
 	
 	// Create user entry in JSON
@@ -65,7 +62,7 @@ User::User(const string& username) : username(username)
 	json userData = getUserData();
 	if (userData.empty())
 	{
-		throw UserException(UserErrorCode::USER_NOT_FOUND, "User '" + username + "' does not exist.");
+		throw UserException(UserErrorCode::USER_NOT_FOUND);
 	}
 }
 
@@ -102,7 +99,7 @@ std::unique_ptr<User> User::createUserObject(const string& username)
 	// Check if user exists
 	if (!usersData.contains(username))
 	{
-		throw UserException(UserErrorCode::USER_NOT_FOUND, "User '" + username + "' not found in database.");
+		throw UserException(UserErrorCode::USER_NOT_FOUND);
 	}
 	
 	const json& userData = usersData[username];
@@ -118,7 +115,7 @@ std::unique_ptr<User> User::createUserObject(const string& username)
 		case UserRole::PASSENGER:
 			return std::make_unique<Passenger>(username);
 		default:
-			throw UserException(UserErrorCode::DATABASE_ERROR, "Unknown user role.");
+			throw UserException(UserErrorCode::DATABASE_ERROR);
 	}
 }
 
@@ -130,7 +127,7 @@ std::unique_ptr<User> User::login(const string& username, const string& password
 	
 	if (!usersData.contains(username))
 	{
-		throw UserException(UserErrorCode::INVALID_CREDENTIALS, "Invalid username.");
+		throw UserException(UserErrorCode::USER_NOT_FOUND);
 	}
 	
 	// Create user object (ownership transferred to unique_ptr)
@@ -139,7 +136,7 @@ std::unique_ptr<User> User::login(const string& username, const string& password
 	// Verify password
 	if (!user->verifyPassword(password))
 	{
-		throw UserException(UserErrorCode::INVALID_CREDENTIALS, "Incorrect password.");
+		throw UserException(UserErrorCode::INCORRECT_PASSWORD);
 	}
 	
 	// Successful login
@@ -243,7 +240,7 @@ json User::loadallUsersData()
 	}
 	catch (const json::exception& e)
 	{
-		throw UserException(UserErrorCode::DATABASE_ERROR, "Failed to parse user database: " + string(e.what()));
+		throw UserException(UserErrorCode::DATABASE_ERROR);
 	}
 	
 	file.close();
@@ -256,7 +253,7 @@ void User::saveallUsersData(const json& data)
 	
 	if (!file.is_open())
 	{
-		throw UserException(UserErrorCode::DATABASE_ERROR, "Could not open " + usersFilePath + " for writing.");
+		throw UserException(UserErrorCode::DATABASE_ERROR);
 	}
 	
 	try
@@ -265,7 +262,7 @@ void User::saveallUsersData(const json& data)
 	}
 	catch (const json::exception& e)
 	{
-		throw UserException(UserErrorCode::DATABASE_ERROR, "Failed to write user database: " + string(e.what()));
+		throw UserException(UserErrorCode::DATABASE_ERROR);
 	}
 	
 	file.close();
@@ -277,7 +274,7 @@ json User::getUserData() const
 	
 	if (!usersData.contains(username))
 	{
-		throw UserException(UserErrorCode::USER_NOT_FOUND, "User '" + username + "' not found in database.");
+		throw UserException(UserErrorCode::USER_NOT_FOUND);
 	}
 	
 	return usersData[username];
@@ -299,7 +296,7 @@ void User::updateUserData(const json& updates)
 	}
 	else
 	{
-		throw UserException(UserErrorCode::USER_NOT_FOUND, "User '" + username + "' not found in database.");
+		throw UserException(UserErrorCode::USER_NOT_FOUND);
 	}
 }
 
@@ -373,14 +370,37 @@ void User::initializeUserSystem()
 
 // ==================== UserException Class ====================
 
-UserException::UserException(UserErrorCode code, const string& message):errorCode(code),errorMessage(message){}
+UserException::UserException(UserErrorCode code):errorCode(code){}
 
 const char* UserException::what() const noexcept
 {
-	return errorMessage.c_str();
+	return getErrorMessage().c_str();
 }
 
 UserErrorCode UserException::getErrorCode() const noexcept
 {
 	return errorCode;
+}
+
+string UserException::getErrorMessage() const noexcept
+{
+	switch (errorCode)
+	{
+		case UserErrorCode::USERNAME_TAKEN:
+			return "Username is already taken. Please choose a different username.";
+		case UserErrorCode::INVALID_USERNAME:
+			return "Invalid username. Must be " + std::to_string(MIN_USERNAME_LENGTH) + "-" + std::to_string(MAX_USERNAME_LENGTH) + " characters, alphanumeric and underscore only.";
+		case UserErrorCode::INVALID_PASSWORD:
+			return "Invalid username. Must be " + std::to_string(MIN_PASSWORD_LENGTH) + "-" + std::to_string(MAX_PASSWORD_LENGTH) + " characters, alphanumeric and underscore only.";
+		case UserErrorCode::USER_NOT_FOUND:
+			return "User does not exist.";
+		case UserErrorCode::INCORRECT_PASSWORD:
+			return "Invalid credentials. Please check your username and password.";
+		case UserErrorCode::DATABASE_ERROR:
+			return "An error occurred while accessing the database.";
+		case UserErrorCode::INVALID_INPUTS:
+			return "Error in User inputs.";
+		default:
+			return "An unknown error occurred.";
+	}
 }
