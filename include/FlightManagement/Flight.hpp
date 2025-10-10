@@ -68,6 +68,7 @@ public:
 	string getStatus() const;
 	double getPrice() const;
 	int getTotalSeats() const;
+	int getAvailableSeats() const;
 	string getGate() const;
 	string getBoardingTime() const;
 	
@@ -76,6 +77,13 @@ public:
 	void setPrice(double price);
 	void setGate(const string& gate);
 	void setBoardingTime(const string& boardingTime);
+	
+	// Seat Management
+	vector<string> getReservedSeats() const;
+	bool reserveSeat(const string& seatNumber);
+	bool releaseSeat(const string& seatNumber);
+	bool isSeatAvailable(const string& seatNumber) const;
+	void displaySeatMap() const;
 	
 	// Utility
 	void displayFlightInfo() const;
@@ -90,6 +98,7 @@ enum class FlightErrorCode
 	FLIGHT_NOT_FOUND,
 	FLIGHT_EXISTS,
 	INVALID_FLIGHT_NUMBER,
+	INVALID_AIRCRAFT_TYPE,
 	DATABASE_ERROR
 };
 
