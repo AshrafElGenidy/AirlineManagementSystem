@@ -314,35 +314,3 @@ string UserInterface::formatCurrency(double amount)
 	oss << std::fixed << std::setprecision(2) << "$" << amount;
 	return oss.str();
 }
-
-// ==================== Template Implementation ====================
-
-template<typename T>
-T UserInterface::validateInput(const string& prompt, std::function<bool(const T&)> validator, const string& errorMsg)
-{
-	while (true)
-	{
-		T value;
-		
-		// Get input based on type
-		if constexpr (std::is_same_v<T, string>)
-		{
-			value = getString(prompt);
-		}
-		else if constexpr (std::is_same_v<T, int>)
-		{
-			value = getInt(prompt);
-		}
-		else if constexpr (std::is_same_v<T, double>)
-		{
-			value = getDouble(prompt);
-		}
-		
-		if (validator(value))
-		{
-			return value;
-		}
-		
-		printError(errorMsg);
-	}
-}

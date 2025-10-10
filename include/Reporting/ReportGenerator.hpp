@@ -8,6 +8,12 @@
 
 class AirlineManagementSystem;
 
+enum class ReportType {
+	OPERATIONAL,
+	MAINTENANCE,
+	FINANCIAL
+};
+
 class ReportGenerator {
 private:
     AirlineManagementSystem* airlineManagementSystem;

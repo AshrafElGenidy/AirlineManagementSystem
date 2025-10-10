@@ -1,4 +1,5 @@
 #include "Administrator.hpp"
+#include "Flight.hpp"
 #include "AirlineManagementSystem.hpp"
 #include "BookingAgent.hpp"
 #include "Passenger.hpp"
@@ -45,7 +46,7 @@ void Administrator::handleMenuChoice(int choice)
 	switch(choice)
 	{
 		case 1:
-			system->manageFlights();
+			Flight::manageFlights();
 			break;
 		case 2:
 			system->manageAircraft();

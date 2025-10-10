@@ -53,11 +53,7 @@ public:
 	void displayTable(const vector<string>& headers, const vector<vector<string>>& rows);
 	
 	// Formatting utilities
-	string formatCurrency(double amount);
-	
-	// Template method for validated input
-	template<typename T>
-	T validateInput(const string& prompt, std::function<bool(const T&)> validator, const string& errorMsg = "Invalid input. Please try again.");
+	string formatCurrency(double amount);	
 };
 
 #endif // USERINTERFACE_HPP
