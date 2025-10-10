@@ -27,8 +27,6 @@ private:
 	explicit Administrator(const string& username);
 
 public:
-	
-	// Override pure virtual methods from User
 	void displayMenu() override;
 	void handleMenuChoice(int choice) override;	
 	

@@ -167,8 +167,7 @@ void Administrator::viewAllUsers()
 	
 	try
 	{
-		// Load all users from database
-		json usersData = User::loadallUsersData();
+		json usersData = db->loadAll();
 		
 		if (usersData.empty())
 		{
@@ -231,9 +230,7 @@ void Administrator::modifyUserInfo()
 	{
 		string username = ui->getString("Enter username of user to modify: ");
 		
-		// Check if user exists
-		json usersData = User::loadallUsersData();
-		if (!usersData.contains(username))
+		if (!db->entryExists(username))
 		{
 			ui->printError("User not found.");
 			ui->pauseScreen();
@@ -312,9 +309,7 @@ void Administrator::deleteUser()
 			return;
 		}
 		
-		// Check if user exists
-		json usersData = User::loadallUsersData();
-		if (!usersData.contains(username))
+		if (!db->entryExists(username))
 		{
 			ui->printError("User not found.");
 			ui->pauseScreen();
@@ -324,8 +319,7 @@ void Administrator::deleteUser()
 		bool confirm = ui->getYesNo("Are you sure you want to delete user '" + username + "'?");
 		if (confirm)
 		{
-			usersData.erase(username);
-			User::saveallUsersData(usersData);
+			db->deleteEntry(username);
 			
 			ui->printSuccess("User '" + username + "' has been deleted successfully.");
 		}

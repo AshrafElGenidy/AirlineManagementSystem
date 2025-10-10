@@ -1,5 +1,4 @@
 #include <iostream>
-#include <fstream>
 #include <sstream>
 #include <iomanip>
 #include <algorithm>
@@ -13,7 +12,7 @@
 
 // Static member initialization
 UserInterface* User::ui = nullptr;
-string User::usersFilePath = "Databases/Users.json";
+std::unique_ptr<Database> User::db = nullptr;
 
 // ==================== Constructors ====================
 
@@ -31,11 +30,7 @@ User::User(const string& username, const string& password, UserRole role) : user
 		throw UserException(UserErrorCode::INVALID_PASSWORD);
 	}
 	
-	// Load existing users data
-	json usersData = loadallUsersData();
-	
-	// Check if username already exists
-	if (usersData.contains(username))
+	if (db->entryExists(username))
 	{
 		throw UserException(UserErrorCode::USERNAME_TAKEN);
 	}
@@ -45,22 +40,18 @@ User::User(const string& username, const string& password, UserRole role) : user
 	json userData;
 	userData["passwordHash"] = hashPassword(password);
 	userData["role"] = static_cast<int>(role);
-	userData["name"] =  ui->getString("Enter full name: ");;
-	userData["email"] =  ui->getString("Enter email address: ");;
+	userData["name"] = ui->getString("Enter full name: ");
+	userData["email"] = ui->getString("Enter email address: ");
 	userData["phoneNumber"] = ui->getString("Enter phone number: ");
 	
-	// Save to file
-	usersData[this->username] = userData;
-	saveallUsersData(usersData);
+	db->addEntry(username, userData);
 	
 	ui->printSuccess("User '" + username + "' registered successfully.");
 }
 
 User::User(const string& username) : username(username)
 {
-	// Load user data to verify user exists
-	json userData = getUserData();
-	if (userData.empty())
+	if (!db->entryExists(username))
 	{
 		throw UserException(UserErrorCode::USER_NOT_FOUND);
 	}
@@ -94,15 +85,12 @@ bool User::validatePassword(const string& password)
 
 std::unique_ptr<User> User::createUserObject(const string& username)
 {
-	json usersData = loadallUsersData();
-	
-	// Check if user exists
-	if (!usersData.contains(username))
+	if (!db->entryExists(username))
 	{
 		throw UserException(UserErrorCode::USER_NOT_FOUND);
 	}
 	
-	const json& userData = usersData[username];
+	json userData = db->getEntry(username);
 	UserRole role = static_cast<UserRole>(userData["role"].get<int>());
 	
 	// Create appropriate subclass based on role using unique_ptr
@@ -122,24 +110,18 @@ std::unique_ptr<User> User::createUserObject(const string& username)
 // validates credentials and returns User object
 std::unique_ptr<User> User::login(const string& username, const string& password)
 {
-	// Load users data to check if username exists
-	json usersData = loadallUsersData();
-	
-	if (!usersData.contains(username))
+	if (!db->entryExists(username))
 	{
 		throw UserException(UserErrorCode::USER_NOT_FOUND);
 	}
 	
-	// Create user object (ownership transferred to unique_ptr)
 	std::unique_ptr<User> user = createUserObject(username);
 	
-	// Verify password
 	if (!user->verifyPassword(password))
 	{
 		throw UserException(UserErrorCode::INCORRECT_PASSWORD);
 	}
 	
-	// Successful login
 	ui->printSuccess("Login successful! Welcome, " + user->getName());
 	return user;
 }
@@ -147,12 +129,11 @@ std::unique_ptr<User> User::login(const string& username, const string& password
 // Verify password matches stored hash
 bool User::verifyPassword(const string& password)
 {
-	const json& userData = getUserData();
+	json userData = db->getEntry(username);
 	string storedHash = userData["passwordHash"];
 	return hashPassword(password) == storedHash;
 }
 
-// Logout current user
 void User::logout() noexcept
 {
 	try
@@ -174,130 +155,40 @@ string User::getUsername() const noexcept
 
 string User::getName() const
 {
-	const json& userData = getUserData();
-	return userData["name"];
+	return db->getAttribute(username, "name");
 }
 
 UserRole User::getRole() const
 {
-	const json& userData = getUserData();
-	int roleInt = userData["role"];
+	int roleInt = db->getAttribute(username, "role");
 	return static_cast<UserRole>(roleInt);
 }
 
 string User::getEmail() const
 {
-	const json& userData = getUserData();
-	return userData["email"];
+	return db->getAttribute(username, "email");
 }
 
 string User::getPhoneNumber() const
 {
-	const json& userData = getUserData();
-	return userData["phoneNumber"];
+	return db->getAttribute(username, "phoneNumber");
 }
 
 // ==================== Setters ====================
 
 void User::setName(const string& name)
 {
-	json updates;
-	updates["name"] = name;
-	updateUserData(updates);
+	db->setAttribute(username, "name", name);
 }
-
 
 void User::setEmail(const string& email)
 {
-	json updates;
-	updates["email"] = email;
-	updateUserData(updates);
+	db->setAttribute(username, "email", email);
 }
 
 void User::setPhoneNumber(const string& phoneNumber)
 {
-	json updates;
-	updates["phoneNumber"] = phoneNumber;
-	updateUserData(updates);
-}
-
-// ==================== JSON Operations ====================
-
-json User::loadallUsersData()
-{
-	std::ifstream file(usersFilePath);
-	
-	if (!file.is_open())
-	{
-		// If file doesn't exist, return empty JSON object
-		return json::object();
-	}
-	
-	json data;
-	try
-	{
-		file >> data;
-	}
-	catch (const json::exception& e)
-	{
-		throw UserException(UserErrorCode::DATABASE_ERROR);
-	}
-	
-	file.close();
-	return data;
-}
-
-void User::saveallUsersData(const json& data)
-{
-	std::ofstream file(usersFilePath);
-	
-	if (!file.is_open())
-	{
-		throw UserException(UserErrorCode::DATABASE_ERROR);
-	}
-	
-	try
-	{
-		file << data.dump(4);
-	}
-	catch (const json::exception& e)
-	{
-		throw UserException(UserErrorCode::DATABASE_ERROR);
-	}
-	
-	file.close();
-}
-
-json User::getUserData() const
-{
-	json usersData = loadallUsersData();
-	
-	if (!usersData.contains(username))
-	{
-		throw UserException(UserErrorCode::USER_NOT_FOUND);
-	}
-	
-	return usersData[username];
-}
-
-void User::updateUserData(const json& updates)
-{
-	json usersData = loadallUsersData();
-	
-	if (usersData.contains(username))
-	{
-		// Merge updates into existing user data
-		for (const auto& [key, value] : updates.items())
-		{
-			usersData[username][key] = value;
-		}
-		
-		saveallUsersData(usersData);
-	}
-	else
-	{
-		throw UserException(UserErrorCode::USER_NOT_FOUND);
-	}
+	db->setAttribute(username, "phoneNumber", phoneNumber);
 }
 
 // ==================== Helpers ====================
@@ -309,7 +200,7 @@ string User::hashPassword(const string& password)
 	
 	for (char c : password)
 	{
-		ss << std::hex << std::setw(2) << std::setfill('0') 
+		ss << std::hex << std::setw(2) << std::setfill('0')
 		   << (static_cast<int>(c) ^ salt);
 	}
 	
@@ -321,21 +212,9 @@ string User::hashPassword(const string& password)
 void User::initializeUserSystem()
 {
 	ui = UserInterface::getInstance();
+	db = std::make_unique<Database>("Databases/Users.json");
 
-	// Create JSON file if it doesn't exist
-	std::ifstream testFile(usersFilePath);
-	if (!testFile.is_open())
-	{
-		json emptyData = json::object();
-		saveallUsersData(emptyData);
-	}
-	else
-	{
-		testFile.close();
-	}
-	
-	// Check if this is first-time setup (no users in database)
-	json usersData = loadallUsersData();
+	json usersData = db->loadAll();
 	if (usersData.empty())
 	{
 		ui->printHeader("FIRST TIME SETUP");
@@ -370,7 +249,7 @@ void User::initializeUserSystem()
 
 // ==================== UserException Class ====================
 
-UserException::UserException(UserErrorCode code):errorCode(code){}
+UserException::UserException(UserErrorCode code) : errorCode(code) {}
 
 const char* UserException::what() const noexcept
 {
@@ -391,7 +270,7 @@ string UserException::getErrorMessage() const noexcept
 		case UserErrorCode::INVALID_USERNAME:
 			return "Invalid username. Must be " + std::to_string(MIN_USERNAME_LENGTH) + "-" + std::to_string(MAX_USERNAME_LENGTH) + " characters, alphanumeric and underscore only.";
 		case UserErrorCode::INVALID_PASSWORD:
-			return "Invalid username. Must be " + std::to_string(MIN_PASSWORD_LENGTH) + "-" + std::to_string(MAX_PASSWORD_LENGTH) + " characters, alphanumeric and underscore only.";
+			return "Invalid password. Must be " + std::to_string(MIN_PASSWORD_LENGTH) + "-" + std::to_string(MAX_PASSWORD_LENGTH) + " characters.";
 		case UserErrorCode::USER_NOT_FOUND:
 			return "User does not exist.";
 		case UserErrorCode::INCORRECT_PASSWORD:

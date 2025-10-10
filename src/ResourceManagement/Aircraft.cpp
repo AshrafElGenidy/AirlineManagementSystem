@@ -10,7 +10,7 @@
 
 // Static member initialization
 UserInterface* Aircraft::ui = nullptr;
-string Aircraft::aircraftFilePath = "Databases/Aircraft.json";
+std::unique_ptr<Database> Aircraft::db = nullptr;
 
 // ==================== Constructors ====================
 
@@ -49,9 +49,7 @@ Aircraft::Aircraft()
 	int fleetCount = ui->getInt("Enter Fleet Count (number of aircraft owned): ");
 	string status = selectAircraftStatus();
 
-	json allAircraftData = loadAllAircraftData();
-
-	if (allAircraftData.contains(aircraftType))
+	if (db->entryExists(aircraftType))
 	{
 		throw AircraftException(AircraftErrorCode::AIRCRAFT_EXISTS);
 	}
@@ -65,8 +63,7 @@ Aircraft::Aircraft()
 	aircraftData["fleetCount"] = fleetCount;
 	aircraftData["status"] = status;
 
-	allAircraftData[this->aircraftType] = aircraftData;
-	saveAllAircraftData(allAircraftData);
+	db->addEntry(this->aircraftType, aircraftData);
 
 	ui->println("");
 	ui->printSuccess("Aircraft type '" + aircraftType + "' has been successfully added to the fleet.");
@@ -75,8 +72,7 @@ Aircraft::Aircraft()
 Aircraft::Aircraft(const string& aircraftType) : aircraftType(aircraftType)
 {
 	// Load aircraft data to verify aircraft exists
-	json aircraftData = getAircraftData();
-	if (aircraftData.empty())
+	if (!db->entryExists(aircraftType))
 	{
 		throw AircraftException(AircraftErrorCode::AIRCRAFT_NOT_FOUND);
 	}
@@ -197,7 +193,7 @@ void Aircraft::viewAllAircraft()
 	ui->clearScreen();
 	ui->printHeader("View All Aircraft Types");
 	
-	json allAircraftData = loadAllAircraftData();
+	json allAircraftData = db->loadAll();
 	
 	if (allAircraftData.empty())
 	{
@@ -306,14 +302,12 @@ void Aircraft::updateAircraftDetails()
 	ui->clearScreen();
 	ui->printHeader("--- Update Aircraft Details ---");
 
-	json allAircraftData = loadAllAircraftData();
-
-	if (!allAircraftData.contains(aircraftType))
+	if (!db->entryExists(aircraftType))
 	{
 		throw AircraftException(AircraftErrorCode::AIRCRAFT_NOT_FOUND);
 	}
 
-	json aircraftData = allAircraftData[aircraftType];
+	json aircraftData = db->getEntry(aircraftType);
 
 	ui->println("Current Aircraft Information:");
 	ui->println("1. Manufacturer: " + aircraftData.value("manufacturer", "N/A"));
@@ -338,13 +332,13 @@ void Aircraft::updateAircraftDetails()
 			case 1:
 			{
 				string newManufacturer = ui->getString("Enter new Manufacturer: ");
-				aircraftData["manufacturer"] = newManufacturer;
+				db->setAttribute(aircraftType, "manufacturer", newManufacturer);
 				break;
 			}
 			case 2:
 			{
 				string newModel = ui->getString("Enter new Model: ");
-				aircraftData["model"] = newModel;
+				db->setAttribute(aircraftType, "model", newModel);
 				break;
 			}
 			case 3:
@@ -354,7 +348,7 @@ void Aircraft::updateAircraftDetails()
 				{
 					throw AircraftException(AircraftErrorCode::INVALID_SEAT_NUMBER);
 				}
-				aircraftData["totalSeats"] = newTotalSeats;
+				db->setAttribute(aircraftType, "totalSeats", newTotalSeats);
 				break;
 			}
 			case 4:
@@ -364,13 +358,13 @@ void Aircraft::updateAircraftDetails()
 				{
 					throw AircraftException(AircraftErrorCode::INVALID_SEAT_LAYOUT);
 				}
-				aircraftData["seatLayout"] = newLayout;
+				db->setAttribute(aircraftType, "seatLayout", newLayout);
 				break;
 			}
 			case 5:
 			{
 				int newRows = ui->getInt("Enter new Number of Rows: ");
-				aircraftData["rows"] = newRows;
+				db->setAttribute(aircraftType, "rows", newRows);
 				break;
 			}
 			default:
@@ -378,9 +372,6 @@ void Aircraft::updateAircraftDetails()
 				return;
 		}
 
-		// Save updates
-		allAircraftData[aircraftType] = aircraftData;
-		saveAllAircraftData(allAircraftData);
 		ui->printSuccess("Aircraft details updated successfully.");
 	}
 	catch (const std::exception& e)
@@ -401,8 +392,7 @@ void Aircraft::removeAircraft()
 		string aircraftType = ui->getString("Enter Aircraft Type to Remove: ");
 		
 		// Check if aircraft exists
-		json allAircraftData = loadAllAircraftData();
-		if (!allAircraftData.contains(aircraftType))
+		if (!db->entryExists(aircraftType))
 		{
 			throw AircraftException(AircraftErrorCode::AIRCRAFT_NOT_FOUND);
 		}
@@ -413,8 +403,7 @@ void Aircraft::removeAircraft()
 		bool confirm = ui->getYesNo("Are you sure you want to remove aircraft type '" + aircraftType + "'?");
 		if (confirm)
 		{
-			allAircraftData.erase(aircraftType);
-			saveAllAircraftData(allAircraftData);
+			db->deleteEntry(aircraftType);
 			
 			ui->printSuccess("Aircraft type '" + aircraftType + "' has been removed successfully.");
 		}
@@ -440,60 +429,49 @@ string Aircraft::getAircraftType() const noexcept
 
 string Aircraft::getManufacturer() const
 {
-	const json& aircraftData = getAircraftData();
-	return aircraftData["manufacturer"];
+	return db->getAttribute(aircraftType, "manufacturer");
 }
 
 string Aircraft::getModel() const
 {
-	const json& aircraftData = getAircraftData();
-	return aircraftData["model"];
+	return db->getAttribute(aircraftType, "model");
 }
 
 int Aircraft::getTotalSeats() const
 {
-	const json& aircraftData = getAircraftData();
-	return aircraftData["totalSeats"];
+	return db->getAttribute(aircraftType, "totalSeats");
 }
 
 string Aircraft::getSeatLayout() const
 {
-	const json& aircraftData = getAircraftData();
-	return aircraftData["seatLayout"];
+	return db->getAttribute(aircraftType, "seatLayout");
 }
 
 int Aircraft::getRows() const
 {
-	const json& aircraftData = getAircraftData();
-	return aircraftData["rows"];
+	return db->getAttribute(aircraftType, "rows");
 }
 
 int Aircraft::getFleetCount() const
 {
-	const json& aircraftData = getAircraftData();
-	return aircraftData["fleetCount"];
+	return db->getAttribute(aircraftType, "fleetCount");
 }
 
 string Aircraft::getStatus() const
 {
-	const json& aircraftData = getAircraftData();
-	return aircraftData.value("status", "Available");
+	return db->getAttribute(aircraftType, "status");
 }
 
 // ==================== Setters ====================
 
 void Aircraft::setManufacturer(const string& manufacturer)
 {
-	json updates;
-	updates["manufacturer"] = manufacturer;
-	updateAircraftData(updates);
+	db->setAttribute(aircraftType, "manufacturer", manufacturer);
 }
 
 void Aircraft::setModel(const string& model)
 {
-	json updates;
-	updates["model"] = model;
-	updateAircraftData(updates);
+	db->setAttribute(aircraftType, "model", model);
 }
 
 void Aircraft::setTotalSeats(int seats)
@@ -503,9 +481,7 @@ void Aircraft::setTotalSeats(int seats)
 		throw AircraftException(AircraftErrorCode::INVALID_SEAT_NUMBER);
 	}
 	
-	json updates;
-	updates["totalSeats"] = seats;
-	updateAircraftData(updates);
+	db->setAttribute(aircraftType, "totalSeats", seats);
 }
 
 void Aircraft::setSeatLayout(const string& layout)
@@ -515,30 +491,22 @@ void Aircraft::setSeatLayout(const string& layout)
 		throw AircraftException(AircraftErrorCode::INVALID_SEAT_LAYOUT);
 	}
 	
-	json updates;
-	updates["seatLayout"] = layout;
-	updateAircraftData(updates);
+	db->setAttribute(aircraftType, "seatLayout", layout);
 }
 
 void Aircraft::setRows(int rows)
 {
-	json updates;
-	updates["rows"] = rows;
-	updateAircraftData(updates);
+	db->setAttribute(aircraftType, "rows", rows);
 }
 
 void Aircraft::setFleetCount(int count)
 {
-	json updates;
-	updates["fleetCount"] = count;
-	updateAircraftData(updates);
+	db->setAttribute(aircraftType, "fleetCount", count);
 }
 
 void Aircraft::setStatus(const string& status)
 {
-	json updates;
-	updates["status"] = status;
-	updateAircraftData(updates);
+	db->setAttribute(aircraftType, "status", status);
 }
 
 // ==================== Seat Management ====================
@@ -547,9 +515,8 @@ vector<string> Aircraft::generateSeatMap() const
 {
 	vector<string> seatMap;
 	
-	const json& aircraftData = getAircraftData();
-	string layout = aircraftData["seatLayout"];
-	int rows = aircraftData["rows"];
+	string layout = db->getAttribute(aircraftType, "seatLayout");
+	int rows = db->getAttribute(aircraftType, "rows");
 	
 	// Parse seat layout (e.g., "3-3" means 3 seats, aisle, 3 seats)
 	vector<int> sections;
@@ -615,7 +582,8 @@ bool Aircraft::isValidSeat(const string& seatNumber) const
 	
 	// Validate row number
 	int row = std::stoi(rowStr);
-	if (row < 1 || row > getRows())
+	int rows = db->getAttribute(aircraftType, "rows");
+	if (row < 1 || row > rows)
 	{
 		return false;
 	}
@@ -677,83 +645,6 @@ void Aircraft::displayAircraftInfo() const
 	ui->println("... (" + std::to_string(getSeatCount()) + " total seats)");
 }
 
-// ==================== JSON Operations ====================
-
-json Aircraft::loadAllAircraftData()
-{
-	std::ifstream file(aircraftFilePath);
-	
-	if (!file.is_open())
-	{
-		return json::object();
-	}
-	
-	json data;
-	try
-	{
-		file >> data;
-	}
-	catch (const json::exception& e)
-	{
-		throw AircraftException(AircraftErrorCode::DATABASE_ERROR);
-	}
-	
-	file.close();
-	return data;
-}
-
-void Aircraft::saveAllAircraftData(const json& data)
-{
-	std::ofstream file(aircraftFilePath);
-	
-	if (!file.is_open())
-	{
-		throw AircraftException(AircraftErrorCode::DATABASE_ERROR);
-	}
-	
-	try
-	{
-		file << data.dump(4);
-	}
-	catch (const json::exception& e)
-	{
-		throw AircraftException(AircraftErrorCode::DATABASE_ERROR);
-	}
-	
-	file.close();
-}
-
-json Aircraft::getAircraftData() const
-{
-	json allAircraftData = loadAllAircraftData();
-	
-	if (!allAircraftData.contains(aircraftType))
-	{
-		throw AircraftException(AircraftErrorCode::AIRCRAFT_NOT_FOUND);
-	}
-	
-	return allAircraftData[aircraftType];
-}
-
-void Aircraft::updateAircraftData(const json& updates)
-{
-	json allAircraftData = loadAllAircraftData();
-	
-	if (allAircraftData.contains(aircraftType))
-	{
-		for (const auto& [key, value] : updates.items())
-		{
-			allAircraftData[aircraftType][key] = value;
-		}
-		
-		saveAllAircraftData(allAircraftData);
-	}
-	else
-	{
-		throw AircraftException(AircraftErrorCode::AIRCRAFT_NOT_FOUND);
-	}
-}
-
 // ==================== Helper Functions ====================
 
 string Aircraft::selectAircraftStatus()
@@ -776,7 +667,7 @@ string Aircraft::selectAircraftStatus()
 vector<string> Aircraft::getAllAircraftTypes()
 {
 	vector<string> types;
-	json allAircraftData = loadAllAircraftData();
+	json allAircraftData = db->loadAll();
 	
 	for (const auto& [type, data] : allAircraftData.items())
 	{
@@ -788,8 +679,7 @@ vector<string> Aircraft::getAllAircraftTypes()
 
 bool Aircraft::aircraftTypeExists(const string& aircraftType)
 {
-	json allAircraftData = loadAllAircraftData();
-	return allAircraftData.contains(aircraftType);
+	return db->entryExists(aircraftType);
 }
 
 // ==================== Static initialization ====================
@@ -797,18 +687,7 @@ bool Aircraft::aircraftTypeExists(const string& aircraftType)
 void Aircraft::initializeAircraftSystem()
 {
 	ui = UserInterface::getInstance();
-	
-	// Create JSON file if it doesn't exist
-	std::ifstream testFile(aircraftFilePath);
-	if (!testFile.is_open())
-	{
-		json emptyData = json::object();
-		saveAllAircraftData(emptyData);
-	}
-	else
-	{
-		testFile.close();
-	}
+	db = std::make_unique<Database>("Databases/Aircraft.json");
 }
 
 // ==================== AircraftException Class ====================

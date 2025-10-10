@@ -7,6 +7,7 @@
 #include <memory>
 #include "json.hpp"
 #include "UserInterface.hpp"
+#include "Database.hpp"
 
 using nlohmann::json;
 using std::string;
@@ -25,13 +26,7 @@ private:
 	
 	// Static data members
 	static UserInterface* ui;
-	static string flightsFilePath;
-	
-	// JSON operations
-	static json loadAllFlightsData();
-	static void saveAllFlightsData(const json& data);
-	json getFlightData() const;
-	void updateFlightData(const json& updates);
+	static std::unique_ptr<Database> db;
 	
 	// Helpers
 	string selectFlightStatus();

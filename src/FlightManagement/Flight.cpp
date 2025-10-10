@@ -11,7 +11,7 @@
 
 // Static member initialization
 UserInterface* Flight::ui = nullptr;
-string Flight::flightsFilePath = "Databases/Flights.json";
+std::unique_ptr<Database> Flight::db = nullptr;
 
 // ==================== Constructors ====================
 
@@ -48,9 +48,7 @@ Flight::Flight()
 	
 	string status = selectFlightStatus();
 
-	json allFlightsData = loadAllFlightsData();
-
-	if (allFlightsData.contains(flightNumber))
+	if (db->entryExists(flightNumber))
 	{
 		throw FlightException(FlightErrorCode::FLIGHT_EXISTS);
 	}
@@ -67,8 +65,7 @@ Flight::Flight()
 	flightData["boardingTime"] = "N/A";
 	flightData["reservedSeats"] = json::array();
 
-	allFlightsData[this->flightNumber] = flightData;
-	saveAllFlightsData(allFlightsData);
+	db->addEntry(this->flightNumber, flightData);
 
 	ui->println("");
 	ui->printSuccess("Flight " + flightNumber + " has been successfully added to the schedule.");
@@ -77,8 +74,7 @@ Flight::Flight()
 Flight::Flight(const string& flightNumber) : flightNumber(flightNumber)
 {
 	// Load flight data to verify flight exists
-	json flightData = getFlightData();
-	if (flightData.empty())
+	if (!db->entryExists(flightNumber))
 	{
 		throw FlightException(FlightErrorCode::FLIGHT_NOT_FOUND);
 	}
@@ -165,7 +161,7 @@ void Flight::viewAllFlights()
 	ui->clearScreen();
 	ui->printHeader("View All Flights");
 	
-	json allFlightsData = loadAllFlightsData();
+	json allFlightsData = db->loadAll();
 	
 	if (allFlightsData.empty())
 	{
@@ -289,14 +285,12 @@ void Flight::updateFlightDetails()
 	ui->clearScreen();
 	ui->printHeader("--- Update Flight Details ---");
 
-	json allFlightsData = loadAllFlightsData();
-
-	if (!allFlightsData.contains(flightNumber))
+	if (!db->entryExists(flightNumber))
 	{
 		throw FlightException(FlightErrorCode::FLIGHT_NOT_FOUND);
 	}
 
-	json flightData = allFlightsData[flightNumber];
+	json flightData = db->getEntry(flightNumber);
 
 	ui->println("Current Flight Information:");
 	ui->println("1. Origin: " + flightData.value("origin", "N/A"));
@@ -321,25 +315,25 @@ void Flight::updateFlightDetails()
 			case 1:
 			{
 				string newOrigin = ui->getString("Enter new Origin: ");
-				flightData["origin"] = newOrigin;
+				db->setAttribute(flightNumber, "origin", newOrigin);
 				break;
 			}
 			case 2:
 			{
 				string newDestination = ui->getString("Enter new Destination: ");
-				flightData["destination"] = newDestination;
+				db->setAttribute(flightNumber, "destination", newDestination);
 				break;
 			}
 			case 3:
 			{
 				string newDeparture = ui->getDate("Enter new Departure Date and Time (YYYY-MM-DD HH:MM): ", "YYYY-MM-DD HH:MM");
-				flightData["departureDateTime"] = newDeparture;
+				db->setAttribute(flightNumber, "departureDateTime", newDeparture);
 				break;
 			}
 			case 4:
 			{
 				string newArrival = ui->getDate("Enter new Arrival Date and Time (YYYY-MM-DD HH:MM): ", "YYYY-MM-DD HH:MM");
-				flightData["arrivalDateTime"] = newArrival;
+				db->setAttribute(flightNumber, "arrivalDateTime", newArrival);
 				break;
 			}
 			case 5:
@@ -376,7 +370,7 @@ void Flight::updateFlightDetails()
 					}
 				}
 				
-				flightData["aircraftType"] = newAircraftType;
+				db->setAttribute(flightNumber, "aircraftType", newAircraftType);
 				break;
 			}
 			default:
@@ -384,9 +378,6 @@ void Flight::updateFlightDetails()
 				return;
 		}
 
-		// Save updates
-		allFlightsData[flightNumber] = flightData;
-		saveAllFlightsData(allFlightsData);
 		ui->printSuccess("Flight details updated successfully.");
 	}
 	catch (const std::exception& e)
@@ -408,8 +399,7 @@ void Flight::removeFlight()
 		string flightNumber = ui->getString("Enter Flight Number to Remove: ");
 		
 		// Check if flight exists
-		json allFlightsData = loadAllFlightsData();
-		if (!allFlightsData.contains(flightNumber))
+		if (!db->entryExists(flightNumber))
 		{
 			throw FlightException(FlightErrorCode::FLIGHT_NOT_FOUND);
 		}
@@ -419,8 +409,7 @@ void Flight::removeFlight()
 		bool confirm = ui->getYesNo("Are you sure you want to remove flight '" + flightNumber + "'?");
 		if (confirm)
 		{
-			allFlightsData.erase(flightNumber);
-			saveAllFlightsData(allFlightsData);
+			db->deleteEntry(flightNumber);
 			
 			ui->printSuccess("Flight '" + flightNumber + "' has been removed successfully.");
 		}
@@ -446,44 +435,37 @@ string Flight::getFlightNumber() const noexcept
 
 string Flight::getOrigin() const
 {
-	const json& flightData = getFlightData();
-	return flightData["origin"];
+	return db->getAttribute(flightNumber, "origin");
 }
 
 string Flight::getDestination() const
 {
-	const json& flightData = getFlightData();
-	return flightData["destination"];
+	return db->getAttribute(flightNumber, "destination");
 }
 
 string Flight::getDepartureDateTime() const
 {
-	const json& flightData = getFlightData();
-	return flightData["departureDateTime"];
+	return db->getAttribute(flightNumber, "departureDateTime");
 }
 
 string Flight::getArrivalDateTime() const
 {
-	const json& flightData = getFlightData();
-	return flightData["arrivalDateTime"];
+	return db->getAttribute(flightNumber, "arrivalDateTime");
 }
 
 string Flight::getAircraftType() const
 {
-	const json& flightData = getFlightData();
-	return flightData["aircraftType"];
+	return db->getAttribute(flightNumber, "aircraftType");
 }
 
 string Flight::getStatus() const
 {
-	const json& flightData = getFlightData();
-	return flightData.value("status", "Scheduled");
+	return db->getAttribute(flightNumber, "status");
 }
 
 double Flight::getPrice() const
 {
-	const json& flightData = getFlightData();
-	return flightData.value("price", 0.0);
+	return db->getAttribute(flightNumber, "price");
 }
 
 int Flight::getTotalSeats() const
@@ -506,13 +488,14 @@ int Flight::getTotalSeats() const
 int Flight::getAvailableSeats() const
 {
 	int totalSeats = getTotalSeats();
-	const json& flightData = getFlightData();
 	
 	// Count reserved seats
+	json reservedSeats = db->getAttribute(flightNumber, "reservedSeats");
 	int reservedCount = 0;
-	if (flightData.contains("reservedSeats") && flightData["reservedSeats"].is_array())
+	
+	if (reservedSeats.is_array())
 	{
-		reservedCount = flightData["reservedSeats"].size();
+		reservedCount = reservedSeats.size();
 	}
 	
 	return totalSeats - reservedCount;
@@ -520,56 +503,47 @@ int Flight::getAvailableSeats() const
 
 string Flight::getGate() const
 {
-	const json& flightData = getFlightData();
-	return flightData.value("gate", "N/A");
+	return db->getAttribute(flightNumber, "gate");
 }
 
 string Flight::getBoardingTime() const
 {
-	const json& flightData = getFlightData();
-	return flightData.value("boardingTime", "N/A");
+	return db->getAttribute(flightNumber, "boardingTime");
 }
 
 // ==================== Setters ====================
 
 void Flight::setStatus(const string& status)
 {
-	json updates;
-	updates["status"] = status;
-	updateFlightData(updates);
+	db->setAttribute(flightNumber, "status", status);
 }
 
 void Flight::setPrice(double price)
 {
-	json updates;
-	updates["price"] = price;
-	updateFlightData(updates);
+	db->setAttribute(flightNumber, "price", price);
 }
 
 void Flight::setGate(const string& gate)
 {
-	json updates;
-	updates["gate"] = gate;
-	updateFlightData(updates);
+	db->setAttribute(flightNumber, "gate", gate);
 }
 
 void Flight::setBoardingTime(const string& boardingTime)
 {
-	json updates;
-	updates["boardingTime"] = boardingTime;
-	updateFlightData(updates);
+	db->setAttribute(flightNumber, "boardingTime", boardingTime);
 }
 
 // ==================== Seat Management ====================
 
 vector<string> Flight::getReservedSeats() const
 {
-	const json& flightData = getFlightData();
 	vector<string> reservedSeats;
 	
-	if (flightData.contains("reservedSeats") && flightData["reservedSeats"].is_array())
+	json seats = db->getAttribute(flightNumber, "reservedSeats");
+	
+	if (seats.is_array())
 	{
-		for (const auto& seat : flightData["reservedSeats"])
+		for (const auto& seat : seats)
 		{
 			reservedSeats.push_back(seat.get<string>());
 		}
@@ -607,40 +581,37 @@ bool Flight::reserveSeat(const string& seatNumber)
 	}
 	
 	// Add seat to reservedSeats array
-	json allFlightsData = loadAllFlightsData();
-	
-	if (!allFlightsData.contains(flightNumber))
+	if (!db->entryExists(flightNumber))
 	{
 		throw FlightException(FlightErrorCode::FLIGHT_NOT_FOUND);
 	}
 	
-	if (!allFlightsData[flightNumber].contains("reservedSeats"))
+	json reservedSeats = db->getAttribute(flightNumber, "reservedSeats");
+	
+	if (!reservedSeats.is_array())
 	{
-		allFlightsData[flightNumber]["reservedSeats"] = json::array();
+		reservedSeats = json::array();
 	}
 	
-	allFlightsData[flightNumber]["reservedSeats"].push_back(seatNumber);
-	saveAllFlightsData(allFlightsData);
+	reservedSeats.push_back(seatNumber);
+	db->setAttribute(flightNumber, "reservedSeats", reservedSeats);
 	
 	return true;
 }
 
 bool Flight::releaseSeat(const string& seatNumber)
 {
-	json allFlightsData = loadAllFlightsData();
-	
-	if (!allFlightsData.contains(flightNumber))
+	if (!db->entryExists(flightNumber))
 	{
 		throw FlightException(FlightErrorCode::FLIGHT_NOT_FOUND);
 	}
 	
-	if (!allFlightsData[flightNumber].contains("reservedSeats") || 
-		!allFlightsData[flightNumber]["reservedSeats"].is_array())
+	json reservedSeats = db->getAttribute(flightNumber, "reservedSeats");
+	
+	if (!reservedSeats.is_array())
 	{
 		return false; // No reserved seats
 	}
-	
-	auto& reservedSeats = allFlightsData[flightNumber]["reservedSeats"];
 	
 	// Find and remove the seat
 	for (auto it = reservedSeats.begin(); it != reservedSeats.end(); ++it)
@@ -648,7 +619,7 @@ bool Flight::releaseSeat(const string& seatNumber)
 		if (*it == seatNumber)
 		{
 			reservedSeats.erase(it);
-			saveAllFlightsData(allFlightsData);
+			db->setAttribute(flightNumber, "reservedSeats", reservedSeats);
 			return true;
 		}
 	}
@@ -773,83 +744,6 @@ void Flight::displayFlightInfo() const
 	ui->println("Boarding Time: " + getBoardingTime());
 }
 
-// ==================== JSON Operations ====================
-
-json Flight::loadAllFlightsData()
-{
-	std::ifstream file(flightsFilePath);
-	
-	if (!file.is_open())
-	{
-		return json::object();
-	}
-	
-	json data;
-	try
-	{
-		file >> data;
-	}
-	catch (const json::exception& e)
-	{
-		throw FlightException(FlightErrorCode::DATABASE_ERROR);
-	}
-	
-	file.close();
-	return data;
-}
-
-void Flight::saveAllFlightsData(const json& data)
-{
-	std::ofstream file(flightsFilePath);
-	
-	if (!file.is_open())
-	{
-		throw FlightException(FlightErrorCode::DATABASE_ERROR);
-	}
-	
-	try
-	{
-		file << data.dump(4);
-	}
-	catch (const json::exception& e)
-	{
-		throw FlightException(FlightErrorCode::DATABASE_ERROR);
-	}
-	
-	file.close();
-}
-
-json Flight::getFlightData() const
-{
-	json allFlightsData = loadAllFlightsData();
-	
-	if (!allFlightsData.contains(flightNumber))
-	{
-		throw FlightException(FlightErrorCode::FLIGHT_NOT_FOUND);
-	}
-	
-	return allFlightsData[flightNumber];
-}
-
-void Flight::updateFlightData(const json& updates)
-{
-	json allFlightsData = loadAllFlightsData();
-	
-	if (allFlightsData.contains(flightNumber))
-	{
-		for (const auto& [key, value] : updates.items())
-		{
-			allFlightsData[flightNumber][key] = value;
-		}
-		
-		saveAllFlightsData(allFlightsData);
-	}
-	else
-	{
-		throw FlightException(FlightErrorCode::FLIGHT_NOT_FOUND);
-	}
-}
-
 // ==================== Helper Functions ====================
 
 string Flight::selectFlightStatus()
@@ -874,18 +768,7 @@ string Flight::selectFlightStatus()
 void Flight::initializeFlightSystem()
 {
 	ui = UserInterface::getInstance();
-	
-	// Create JSON file if it doesn't exist
-	std::ifstream testFile(flightsFilePath);
-	if (!testFile.is_open())
-	{
-		json emptyData = json::object();
-		saveAllFlightsData(emptyData);
-	}
-	else
-	{
-		testFile.close();
-	}
+	db = std::make_unique<Database>("Databases/Flights.json");
 }
 
 vector<unique_ptr<Flight>> Flight::searchFlights(const string& origin,
@@ -893,7 +776,7 @@ vector<unique_ptr<Flight>> Flight::searchFlights(const string& origin,
 													  const string& departureDate)
 {
 	vector<unique_ptr<Flight>> results;
-	json allFlightsData = loadAllFlightsData();
+	json allFlightsData = db->loadAll();
 	
 	for (const auto& [flightNum, flightData] : allFlightsData.items())
 	{

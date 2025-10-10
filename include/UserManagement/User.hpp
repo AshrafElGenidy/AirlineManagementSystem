@@ -7,6 +7,7 @@
 #include <memory>
 #include "json.hpp"
 #include "UserInterface.hpp"
+#include "Database.hpp"
 
 using std::string;
 using nlohmann::json;
@@ -31,14 +32,8 @@ protected:
 	
 	// Static data members
 	static UserInterface* ui;
-	static string usersFilePath;
+	static std::unique_ptr<Database> db;
 		
-	// JSON operations
-	static json loadallUsersData();
-	static void saveallUsersData(const json& data);
-	json getUserData() const;
-	void updateUserData(const json& updates);
-
 	// Helpers
 	static string hashPassword(const string& password);
 	static std::unique_ptr<User> createUserObject(const string& username);
