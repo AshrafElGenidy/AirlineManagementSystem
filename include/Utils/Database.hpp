@@ -3,6 +3,7 @@
 
 #include <string>
 #include <exception>
+#include <memory>
 #include "json.hpp"
 
 using nlohmann::json;
@@ -14,18 +15,20 @@ class Database
 {
 private:
 	string filePath;
+	std::unique_ptr<json> cachedData;  // In-memory cache
 	
-	// Helpers
-	json loadFile() const;
-	void saveFile(const json& data) const;
+	// Helper methods
+	void loadFromFile();
+	void writeToFile() const;
 
 public:
-	// Constructor
-	explicit Database(const string& filePath);
+	// Constructor - takes entity name only (e.g., "Flight", "User", "Aircraft")
+	// Automatically constructs path: "Databases/{entityName}.json"
+	explicit Database(const string& entityName);
 	
 	// File operations
 	json loadAll() const;
-	void saveAll(const json& data) const;
+	void saveAll(const json& data);
 	
 	// Entry operations
 	json getEntry(const string& entryKey) const;
@@ -46,7 +49,11 @@ public:
 	void clear();
 	void initializeIfNotExists();
 	
-	virtual ~Database() noexcept = default;
+	// Delete copy and move operations (prevent accidental duplication of cache)
+	Database(const Database&) = delete;
+	Database(Database&&) = delete;
+	Database& operator=(const Database&) = delete;
+	Database& operator=(Database&&) = delete;
 };
 
 // ==================== Database Exception Class ====================

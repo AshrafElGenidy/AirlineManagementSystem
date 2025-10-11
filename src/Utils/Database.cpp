@@ -1,40 +1,58 @@
 #include <fstream>
+#include <filesystem>
 #include "Database.hpp"
+
+namespace fs = std::filesystem;
 
 // ==================== Database Class ====================
 
-Database::Database(const string& filePath) : filePath(filePath)
+Database::Database(const string& entityName) 
 {
+	filePath = "Databases/" + entityName + ".json";
 	initializeIfNotExists();
+	loadFromFile();
 }
 
-// ==================== File Operations ====================
+// ==================== Private Helper Methods ====================
 
-json Database::loadFile() const
+void Database::loadFromFile()
 {
 	std::ifstream file(filePath);
 	
 	if (!file.is_open())
 	{
-		return json::object();
+		cachedData = std::make_unique<json>(json::object());
+		return;
 	}
 	
-	json data;
 	try
 	{
+		json data;
 		file >> data;
+		cachedData = std::make_unique<json>(data);
 	}
 	catch (const json::exception& e)
 	{
+		file.close();
 		throw DatabaseException(DatabaseErrorCode::INVALID_JSON);
 	}
 	
 	file.close();
-	return data;
 }
 
-void Database::saveFile(const json& data) const
+void Database::writeToFile() const
 {
+	// Ensure directory exists
+	try
+	{
+		fs::path filePath_obj(filePath);
+		fs::create_directories(filePath_obj.parent_path());
+	}
+	catch (const std::exception& e)
+	{
+		throw DatabaseException(DatabaseErrorCode::FILE_WRITE_ERROR);
+	}
+	
 	std::ofstream file(filePath);
 	
 	if (!file.is_open())
@@ -44,7 +62,14 @@ void Database::saveFile(const json& data) const
 	
 	try
 	{
-		file << data.dump(4);
+		if (cachedData)
+		{
+			file << cachedData->dump(4);
+		}
+		else
+		{
+			file << json::object().dump(4);
+		}
 	}
 	catch (const json::exception& e)
 	{
@@ -54,84 +79,117 @@ void Database::saveFile(const json& data) const
 	file.close();
 }
 
+// ==================== File Operations ====================
+
 json Database::loadAll() const
 {
-	return loadFile();
+	if (cachedData)
+	{
+		return *cachedData;
+	}
+	return json::object();
 }
 
-void Database::saveAll(const json& data) const
+void Database::saveAll(const json& data)
 {
-	saveFile(data);
+	cachedData = std::make_unique<json>(data);
+	writeToFile();
 }
 
 // ==================== Entry Operations ====================
 
 json Database::getEntry(const string& entryKey) const
 {
-	json data = loadFile();
-	
-	if (!data.contains(entryKey))
-	{
-		throw DatabaseException(DatabaseErrorCode::ENTRY_NOT_FOUND);
-	}
-	
-	return data[entryKey];
-}
-
-void Database::addEntry(const string& entryKey, const json& entryData)
-{
-	json data = loadFile();
-	
-	if (data.contains(entryKey))
+	if (!cachedData)
 	{
 		throw DatabaseException(DatabaseErrorCode::DATABASE_ERROR);
 	}
 	
-	data[entryKey] = entryData;
-	saveFile(data);
-}
-
-void Database::deleteEntry(const string& entryKey)
-{
-	json data = loadFile();
-	
-	if (!data.contains(entryKey))
+	if (!cachedData->contains(entryKey))
 	{
 		throw DatabaseException(DatabaseErrorCode::ENTRY_NOT_FOUND);
 	}
 	
-	data.erase(entryKey);
-	saveFile(data);
+	return (*cachedData)[entryKey];
+}
+
+void Database::addEntry(const string& entryKey, const json& entryData)
+{
+	if (!cachedData)
+	{
+		cachedData = std::make_unique<json>(json::object());
+	}
+	
+	if (cachedData->contains(entryKey))
+	{
+		throw DatabaseException(DatabaseErrorCode::DATABASE_ERROR);
+	}
+	
+	(*cachedData)[entryKey] = entryData;
+	writeToFile();
+}
+
+void Database::deleteEntry(const string& entryKey)
+{
+	if (!cachedData)
+	{
+		throw DatabaseException(DatabaseErrorCode::DATABASE_ERROR);
+	}
+	
+	if (!cachedData->contains(entryKey))
+	{
+		throw DatabaseException(DatabaseErrorCode::ENTRY_NOT_FOUND);
+	}
+	
+	cachedData->erase(entryKey);
+	writeToFile();
 }
 
 bool Database::entryExists(const string& entryKey) const
 {
-	json data = loadFile();
-	return data.contains(entryKey);
+	if (!cachedData)
+	{
+		return false;
+	}
+	
+	return cachedData->contains(entryKey);
 }
 
 void Database::updateEntry(const string& entryKey, const json& updates)
 {
-	json data = loadFile();
+	if (!cachedData)
+	{
+		throw DatabaseException(DatabaseErrorCode::DATABASE_ERROR);
+	}
 	
-	if (!data.contains(entryKey))
+	if (!cachedData->contains(entryKey))
 	{
 		throw DatabaseException(DatabaseErrorCode::ENTRY_NOT_FOUND);
 	}
 	
 	for (const auto& [key, value] : updates.items())
 	{
-		data[entryKey][key] = value;
+		(*cachedData)[entryKey][key] = value;
 	}
 	
-	saveFile(data);
+	writeToFile();
 }
 
 // ==================== Attribute Operations ====================
 
 auto Database::getAttribute(const string& entryKey, const string& attributeKey) const
 {
-	json entry = getEntry(entryKey);
+	if (!cachedData)
+	{
+		throw DatabaseException(DatabaseErrorCode::DATABASE_ERROR);
+	}
+	
+	if (!cachedData->contains(entryKey))
+	{
+		throw DatabaseException(DatabaseErrorCode::ENTRY_NOT_FOUND);
+	}
+	
+	json entry = (*cachedData)[entryKey];
 	
 	if (!entry.contains(attributeKey))
 	{
@@ -143,53 +201,65 @@ auto Database::getAttribute(const string& entryKey, const string& attributeKey) 
 
 void Database::setAttribute(const string& entryKey, const string& attributeKey, const json& value)
 {
-	json data = loadFile();
+	if (!cachedData)
+	{
+		throw DatabaseException(DatabaseErrorCode::DATABASE_ERROR);
+	}
 	
-	if (!data.contains(entryKey))
+	if (!cachedData->contains(entryKey))
 	{
 		throw DatabaseException(DatabaseErrorCode::ENTRY_NOT_FOUND);
 	}
 	
-	data[entryKey][attributeKey] = value;
-	saveFile(data);
+	(*cachedData)[entryKey][attributeKey] = value;
+	writeToFile();
 }
 
 void Database::deleteAttribute(const string& entryKey, const string& attributeKey)
 {
-	json data = loadFile();
+	if (!cachedData)
+	{
+		throw DatabaseException(DatabaseErrorCode::DATABASE_ERROR);
+	}
 	
-	if (!data.contains(entryKey))
+	if (!cachedData->contains(entryKey))
 	{
 		throw DatabaseException(DatabaseErrorCode::ENTRY_NOT_FOUND);
 	}
 	
-	if (!data[entryKey].contains(attributeKey))
+	if (!(*cachedData)[entryKey].contains(attributeKey))
 	{
 		throw DatabaseException(DatabaseErrorCode::ATTRIBUTE_NOT_FOUND);
 	}
 	
-	data[entryKey].erase(attributeKey);
-	saveFile(data);
+	(*cachedData)[entryKey].erase(attributeKey);
+	writeToFile();
 }
 
 bool Database::attributeExists(const string& entryKey, const string& attributeKey) const
 {
-	json data = loadFile();
-	
-	if (!data.contains(entryKey))
+	if (!cachedData)
 	{
 		return false;
 	}
 	
-	return data[entryKey].contains(attributeKey);
+	if (!cachedData->contains(entryKey))
+	{
+		return false;
+	}
+	
+	return (*cachedData)[entryKey].contains(attributeKey);
 }
 
 // ==================== Utility Operations ====================
 
 int Database::getEntryCount() const
 {
-	json data = loadFile();
-	return data.size();
+	if (cachedData)
+	{
+		return cachedData->size();
+	}
+	return 0;
 }
 
 bool Database::isEmpty() const
@@ -199,7 +269,8 @@ bool Database::isEmpty() const
 
 void Database::clear()
 {
-	saveFile(json::object());
+	cachedData = std::make_unique<json>(json::object());
+	writeToFile();
 }
 
 void Database::initializeIfNotExists()
@@ -207,7 +278,23 @@ void Database::initializeIfNotExists()
 	std::ifstream testFile(filePath);
 	if (!testFile.is_open())
 	{
-		saveFile(json::object());
+		// File doesn't exist, create directory and empty file
+		try
+		{
+			fs::path filePath_obj(filePath);
+			fs::create_directories(filePath_obj.parent_path());
+		}
+		catch (const std::exception& e)
+		{
+			// Directory creation failed, but we'll try to create the file anyway
+		}
+		
+		std::ofstream createFile(filePath);
+		if (createFile.is_open())
+		{
+			createFile << json::object().dump(4);
+			createFile.close();
+		}
 	}
 	else
 	{
@@ -221,7 +308,9 @@ DatabaseException::DatabaseException(DatabaseErrorCode code) : errorCode(code) {
 
 const char* DatabaseException::what() const noexcept
 {
-	return getErrorMessage().c_str();
+	static string message;
+	message = getErrorMessage();
+	return message.c_str();
 }
 
 DatabaseErrorCode DatabaseException::getErrorCode() const noexcept
@@ -233,13 +322,21 @@ string DatabaseException::getErrorMessage() const noexcept
 {
 	switch (errorCode)
 	{
-		case DatabaseErrorCode::FILE_NOT_FOUND:			return "Database file not found.";
-		case DatabaseErrorCode::FILE_READ_ERROR:		return "Error reading from database file.";
-		case DatabaseErrorCode::FILE_WRITE_ERROR:		return "Error writing to database file.";
-		case DatabaseErrorCode::INVALID_JSON:			return "Invalid JSON format in database file.";
-		case DatabaseErrorCode::ENTRY_NOT_FOUND:		return "Entry does not exist in database.";
-		case DatabaseErrorCode::ATTRIBUTE_NOT_FOUND:	return "Attribute does not exist in entry.";
-		case DatabaseErrorCode::DATABASE_ERROR:			return "An error occurred while accessing the database.";
-		default:										return "An unknown database error occurred.";
+		case DatabaseErrorCode::FILE_NOT_FOUND:
+			return "Database file not found.";
+		case DatabaseErrorCode::FILE_READ_ERROR:
+			return "Error reading from database file.";
+		case DatabaseErrorCode::FILE_WRITE_ERROR:
+			return "Error writing to database file.";
+		case DatabaseErrorCode::INVALID_JSON:
+			return "Invalid JSON format in database file.";
+		case DatabaseErrorCode::ENTRY_NOT_FOUND:
+			return "Entry does not exist in database.";
+		case DatabaseErrorCode::ATTRIBUTE_NOT_FOUND:
+			return "Attribute does not exist in entry.";
+		case DatabaseErrorCode::DATABASE_ERROR:
+			return "An error occurred while accessing the database.";
+		default:
+			return "An unknown database error occurred.";
 	}
 }
