@@ -15,6 +15,7 @@ skinparam class {
   BackgroundColor<<Entity>> #F3E5F5
   BackgroundColor<<Controller>> #FFE0B2
   BackgroundColor<<Utility>> #E0F2F1
+  BackgroundColor<<Exception>> #FFEBEE
   BorderColor #424242
   ArrowColor #616161
   FontName Arial
@@ -28,6 +29,14 @@ skinparam packageStyle rectangle
 ' ==================== Core Infrastructure ====================
 
 package "Core Infrastructure" {
+  class GridDisplayConfig {
+    + title: string
+    + headerLines: vector<string>
+    + legend: vector<string>
+    + footerLines: vector<string>
+    + showSeparator: bool
+  }
+
   class UserInterface <<Singleton>> <<Utility>> {
     + {static} getInstance(): UserInterface*
     + print(message: string): void
@@ -48,7 +57,43 @@ package "Core Infrastructure" {
     + pauseScreen(): void
     + displayMenu(title: string, options: vector<string>): void
     + displayTable(headers: vector<string>, rows: vector<vector<string>>): void
+    + displayGrid(rowLabels: vector<string>, gridData: vector<vector<string>>, config: GridDisplayConfig): void
     + formatCurrency(amount: double): string
+  }
+
+  class Database <<Utility>> {
+    + Database(filePath: string)
+    + loadAll(): json
+    + saveAll(data: json): void
+    + getEntry(entryKey: string): json
+    + addEntry(entryKey: string, entryData: json): void
+    + deleteEntry(entryKey: string): void
+    + entryExists(entryKey: string): bool
+    + updateEntry(entryKey: string, updates: json): void
+    + getAttribute(entryKey: string, attributeKey: string): auto
+    + setAttribute(entryKey: string, attributeKey: string, value: json): void
+    + deleteAttribute(entryKey: string, attributeKey: string): void
+    + attributeExists(entryKey: string, attributeKey: string): bool
+    + getEntryCount(): int
+    + isEmpty(): bool
+    + clear(): void
+    + initializeIfNotExists(): void
+  }
+
+  enum DatabaseErrorCode <<Enum>> {
+    FILE_NOT_FOUND
+    FILE_READ_ERROR
+    FILE_WRITE_ERROR
+    INVALID_JSON
+    ENTRY_NOT_FOUND
+    ATTRIBUTE_NOT_FOUND
+    DATABASE_ERROR
+  }
+
+  class DatabaseException <<Exception>> {
+    + DatabaseException(code: DatabaseErrorCode)
+    + what(): const char*
+    + getErrorCode(): DatabaseErrorCode
   }
 
   class AirlineManagementSystem <<Singleton>> <<Controller>> {
@@ -62,6 +107,9 @@ package "Core Infrastructure" {
     + shutdown(): void
   }
   
+  UserInterface --> GridDisplayConfig : uses
+  Database ..> DatabaseException : throws
+  DatabaseException --> DatabaseErrorCode
   AirlineManagementSystem --> UserInterface : uses
 }
 
@@ -85,12 +133,11 @@ package "User Management" {
   }
 
   abstract class User <<Abstract>> {
-    + User(username: string, password: string, role: UserRole)
-    + User(username: string)
-    + {abstract} displayMenu(): void
-    + {abstract} handleMenuChoice(choice: int): void
+    # username: string
     + {static} initializeUserSystem(): void
     + {static} login(username: string, password: string): unique_ptr<User>
+    + {abstract} displayMenu(): void
+    + {abstract} handleMenuChoice(choice: int): void
     + logout(): void
     + getUsername(): string
     + getName(): string
@@ -103,22 +150,16 @@ package "User Management" {
   }
 
   class Administrator {
-    + Administrator(username: string, password: string)
-    + Administrator(username: string)
     + displayMenu(): void
     + handleMenuChoice(choice: int): void
   }
 
   class BookingAgent {
-    + BookingAgent(username: string, password: string)
-    + BookingAgent(username: string)
     + displayMenu(): void
     + handleMenuChoice(choice: int): void
   }
 
   class Passenger {
-    + Passenger(username: string, password: string)
-    + Passenger(username: string)
     + displayMenu(): void
     + handleMenuChoice(choice: int): void
     + viewBookingHistory(): void
@@ -126,7 +167,7 @@ package "User Management" {
     + viewBoardingPasses(): void
   }
 
-  class UserException {
+  class UserException <<Exception>> {
     + UserException(code: UserErrorCode)
     + what(): const char*
     + getErrorCode(): UserErrorCode
@@ -137,29 +178,124 @@ package "User Management" {
   User <|-- Passenger
   User --> UserRole
   User ..> UserException : throws
+  User --> Database : uses
+  User --> UserInterface : uses
   UserException --> UserErrorCode
+}
+
+' ==================== Seat Map Management ====================
+
+package "Seat Map Management" {
+  enum SeatMapErrorCode <<Enum>> {
+    INVALID_SEAT
+    SEAT_ALREADY_RESERVED
+    SEAT_NOT_FOUND
+    INVALID_LAYOUT
+    INVALID_ROWS
+  }
+
+  class SeatMap <<Utility>> {
+    - seatLayout: string
+    - rows: int
+    - reservedSeats: vector<string>
+    + SeatMap(seatLayout: string, rows: int)
+    + SeatMap(seatLayout: string, rows: int, reservedSeats: vector<string>)
+    + {static} initializeSeatMapSystem(): void
+    + {static} validateSeatLayout(layout: string): bool
+    + {static} generateSeatMap(seatLayout: string, rows: int): vector<string>
+    + {static} calculateSeatCount(seatLayout: string, rows: int): int
+    + {static} getSeatsPerRow(seatLayout: string): int
+    + {static} getSampleSeatMapDisplayData(seatLayout: string, rows: int, rowLabels: vector<string>&, gridData: vector<vector<string>>&, displayRows: int): void
+    + {static} getSampleSeatMapFooter(seatLayout: string, rows: int): vector<string>
+    + isValidSeat(seatNumber: string): bool
+    + getAllSeats(): vector<string>
+    + reserveSeat(seatNumber: string): bool
+    + releaseSeat(seatNumber: string): bool
+    + isSeatAvailable(seatNumber: string): bool
+    + getReservedSeats(): vector<string>
+    + getAvailableSeatsCount(): int
+    + getTotalSeatsCount(): int
+    + getSeatMapDisplayData(rowLabels: vector<string>&, gridData: vector<vector<string>>&): void
+    + getSeatMapHeader(flightNumber: string, origin: string, destination: string, aircraftType: string): vector<string>
+    + getSeatMapLegend(): vector<string>
+    + getSeatMapFooter(): vector<string>
+  }
+
+  class SeatMapException <<Exception>> {
+    + SeatMapException(code: SeatMapErrorCode)
+    + SeatMapException(code: SeatMapErrorCode, info: string)
+    + what(): const char*
+    + getErrorCode(): SeatMapErrorCode
+  }
+
+  SeatMap ..> SeatMapException : throws
+  SeatMapException --> SeatMapErrorCode
+}
+
+' ==================== Aircraft Management ====================
+
+package "Aircraft Management" {
+  enum AircraftErrorCode <<Enum>> {
+    AIRCRAFT_NOT_FOUND
+    AIRCRAFT_EXISTS
+    INVALID_AIRCRAFT_TYPE
+    INVALID_SEAT_LAYOUT
+    INVALID_SEAT_NUMBER
+    DATABASE_ERROR
+  }
+
+  class Aircraft <<Entity>> {
+    - aircraftType: string
+    + Aircraft()
+    + Aircraft(aircraftType: string)
+    + {static} initializeAircraftSystem(): void
+    + {static} manageAircraft(): void
+    + {static} getAllAircraftTypes(): vector<string>
+    + {static} aircraftTypeExists(aircraftType: string): bool
+    + getAircraftType(): string
+    + getManufacturer(): string
+    + getModel(): string
+    + getTotalSeats(): int
+    + getSeatLayout(): string
+    + getRows(): int
+    + getFleetCount(): int
+    + getStatus(): string
+    + setManufacturer(manufacturer: string): void
+    + setModel(model: string): void
+    + setTotalSeats(seats: int): void
+    + setSeatLayout(layout: string): void
+    + setRows(rows: int): void
+    + setFleetCount(count: int): void
+    + setStatus(status: string): void
+    + displayAircraftInfo(): void
+  }
+
+  class AircraftException <<Exception>> {
+    + AircraftException(code: AircraftErrorCode)
+    + what(): const char*
+    + getErrorCode(): AircraftErrorCode
+  }
+  
+  Aircraft --> Database : uses
+  Aircraft --> UserInterface : uses
+  Aircraft ..> SeatMap : uses
+  Aircraft ..> AircraftException : throws
+  AircraftException --> AircraftErrorCode
 }
 
 ' ==================== Flight Management ====================
 
 package "Flight Management" {
-  enum FlightStatus <<Enum>> {
-    SCHEDULED
-    DELAYED
-    BOARDING
-    DEPARTED
-    ARRIVED
-    CANCELED
-  }
-
   enum FlightErrorCode <<Enum>> {
     FLIGHT_NOT_FOUND
     FLIGHT_EXISTS
     INVALID_FLIGHT_NUMBER
+    INVALID_AIRCRAFT_TYPE
     DATABASE_ERROR
   }
 
   class Flight <<Entity>> {
+    - flightNumber: string
     + Flight()
     + Flight(flightNumber: string)
     + {static} initializeFlightSystem(): void
@@ -175,86 +311,32 @@ package "Flight Management" {
     + getPrice(): double
     + getTotalSeats(): int
     + getAvailableSeats(): int
-    + getReservedSeats(): vector<string>
     + getGate(): string
     + getBoardingTime(): string
     + setStatus(status: string): void
     + setPrice(price: double): void
     + setGate(gate: string): void
     + setBoardingTime(boardingTime: string): void
+    + getReservedSeats(): vector<string>
     + reserveSeat(seatNumber: string): bool
     + releaseSeat(seatNumber: string): bool
     + isSeatAvailable(seatNumber: string): bool
+    + displaySeatMap(): void
     + displayFlightInfo(): void
   }
 
-  class FlightException {
+  class FlightException <<Exception>> {
     + FlightException(code: FlightErrorCode)
     + what(): const char*
     + getErrorCode(): FlightErrorCode
   }
   
-  Flight --> FlightStatus
+  Flight --> Database : uses
+  Flight --> UserInterface : uses
+  Flight ..> Aircraft : queries
+  Flight ..> SeatMap : uses
   Flight ..> FlightException : throws
   FlightException --> FlightErrorCode
-}
-
-' ==================== Aircraft Management ====================
-
-package "Aircraft Management" {
-  enum AircraftStatus <<Enum>> {
-    AVAILABLE
-    IN_FLIGHT
-    MAINTENANCE
-    OUT_OF_SERVICE
-  }
-
-  class Aircraft <<Entity>> {
-    + Aircraft()
-    + Aircraft(aircraftType: string)
-    + {static} initializeAircraftSystem(): void
-    + {static} manageAircraft(): void
-    + {static} getAllAircraftTypes(): vector<string>
-    + getAircraftType(): string
-    + getManufacturer(): string
-    + getModel(): string
-    + getTotalSeats(): int
-    + getSeatLayout(): string
-    + getFleetCount(): int
-    + getAvailableCount(): int
-    + setManufacturer(manufacturer: string): void
-    + setModel(model: string): void
-    + setTotalSeats(seats: int): void
-    + setSeatLayout(layout: string): void
-    + incrementFleet(): void
-    + decrementFleet(): void
-    + displayAircraftInfo(): void
-    + generateSeatMap(): vector<string>
-  }
-
-  enum MaintenanceType <<Enum>> {
-    SCHEDULED
-    UNSCHEDULED
-    INSPECTION
-    REPAIR
-    OVERHAUL
-  }
-
-  class MaintenanceLog {
-    + MaintenanceLog(aircraftId: string, type: MaintenanceType, description: string)
-    + {static} addMaintenanceLog(aircraftType: string, log: MaintenanceLog): void
-    + {static} getMaintenanceLogs(aircraftType: string): vector<MaintenanceLog>
-    + getLogId(): string
-    + getAircraftId(): string
-    + getMaintenanceDate(): string
-    + getMaintenanceType(): MaintenanceType
-    + getDescription(): string
-    + getCost(): double
-    + displayLog(): void
-  }
-  
-  Aircraft --> AircraftStatus
-  MaintenanceLog --> MaintenanceType
 }
 
 ' ==================== Crew Management ====================
@@ -404,19 +486,10 @@ BookingAgent --> AirlineManagementSystem : uses
 Passenger --> AirlineManagementSystem : uses
 
 ' Data flow relationships
-Flight ..> Aircraft : queries seat info
 Reservation --> Flight : references
 Reservation --> Payment : has
 BoardingPass --> Reservation : generated from
 CrewMember ..> Flight : assigned to
-
-' All entity classes use UserInterface
-Flight ..> UserInterface : uses
-Aircraft ..> UserInterface : uses
-CrewMember ..> UserInterface : uses
-Reservation ..> UserInterface : uses
-Payment ..> UserInterface : uses
-BoardingPass ..> UserInterface : uses
 
 note top of AirlineManagementSystem
   **Singleton Pattern - Central Orchestrator**
@@ -428,6 +501,25 @@ note top of AirlineManagementSystem
   - generateReports() -> ReportGenerator::generateReports()
 end note
 
+note right of SeatMap
+  **Pure Business Logic Class**
+  - NO database or UI dependencies
+  - Validates seat layouts and seat numbers
+  - Manages seat reservations in memory
+  - Returns display data structures
+  - Used by both Aircraft and Flight classes
+  
+  **Static Methods:**
+  - Generate seat maps from layout
+  - Validate seat configurations
+  - Calculate seat counts
+  
+  **Instance Methods:**
+  - Track specific flight reservations
+  - Validate individual seats
+  - Return display data for UI
+end note
+
 note right of Flight
   **Self-Managing Entity**
   Database: Flights.json
@@ -437,12 +529,15 @@ note right of Flight
       "destination": "LAX",
       "aircraftType": "Boeing737",
       "reservedSeats": ["1A", "2B"],
+      "price": 299.99,
+      "status": "SCHEDULED",
       ...
     }
   }
-  - Queries Aircraft for total seats
-  - Manages seat reservations per flight
-  - Tracks which specific seats are reserved
+  - Queries Aircraft for seat configuration
+  - Creates SeatMap instances with reservations
+  - Manages seat bookings per flight
+  - Each flight has independent reservations
 end note
 
 note right of Aircraft
@@ -454,31 +549,44 @@ note right of Aircraft
       "model": "737-800",
       "totalSeats": 180,
       "seatLayout": "3-3",
+      "rows": 30,
       "fleetCount": 15,
+      "status": "AVAILABLE",
       ...
     }
   }
   - Stores aircraft TYPE specifications
-  - Defines seat capacity per type
-  - Tracks fleet size per type
-  - Generates seat maps for seat selection
+  - Defines seat layout and capacity
+  - Uses SeatMap for validation
+  - Uses UI grid display for seat maps
 end note
 
-note right of CrewMember
-  **Crew Registry with Flight Assignments**
-  Database: Crew.json
+note left of UserInterface
+  **Generic Grid Display**
+  - displayGrid() can render any 2D data
+  - Used by SeatMap for seat displays
+  - Configurable with GridDisplayConfig
+  - Handles all formatting and alignment
+  - Reusable for other grid-based displays
+end note
+
+note bottom of User
+  **User Management**
+  Database: Users.json
   Structure: {
-    "P001": {
+    "john_doe": {
+      "passwordHash": "...",
+      "role": 2,
       "name": "John Doe",
-      "role": "PILOT",
-      "assignedFlights": ["FL123", "FL456"],
-      "flightHours": 2500,
+      "email": "john@example.com",
+      "phoneNumber": "555-1234",
       ...
     }
   }
-  - Each crew member tracks assigned flights
-  - Flight class can query available crew
-  - Validation for max flight hours
+  - Username as primary key
+  - Role-based polymorphism
+  - Password hashing for security
+  - First-time setup creates admin
 end note
 
 note left of Reservation
@@ -491,30 +599,14 @@ note left of Reservation
       "seatNumber": "12A",
       "status": "CONFIRMED",
       "paymentId": "PAY001",
+      "bookingDate": "2024-01-15",
       ...
     }
   }
   - Links passenger to flight + seat
-  - Coordinates with Flight for seat availability
+  - Coordinates with Flight for availability
   - Triggers Payment creation
   - Passengers query by username
-end note
-
-note bottom of User
-  **User Management**
-  Database: Users.json
-  Structure: {
-    "john_doe": {
-      "passwordHash": "...",
-      "role": 2,
-      "name": "John Doe",
-      "email": "john@example.com",
-      ...
-    }
-  }
-  - Username as primary key
-  - Role-based polymorphism
-  - Passengers can view their reservations
 end note
 
 @enduml
