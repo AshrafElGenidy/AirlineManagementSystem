@@ -306,6 +306,70 @@ void UserInterface::displayTable(const vector<string>& headers, const vector<vec
 	println("");
 }
 
+void UserInterface::displayGrid(const vector<string>& rowLabels,
+                                const vector<vector<string>>& gridData,
+                                const GridDisplayConfig& config)
+{
+	// Display title if provided
+	if (!config.title.empty())
+	{
+		printHeader(config.title);
+	}
+	
+	// Display header lines
+	if (!config.headerLines.empty())
+	{
+		for (const auto& line : config.headerLines)
+		{
+			println(line);
+		}
+		println("");
+	}
+	
+	// Display legend
+	if (!config.legend.empty())
+	{
+		for (const auto& line : config.legend)
+		{
+			println(line);
+		}
+		if (config.showSeparator)
+		{
+			printSeparator();
+		}
+	}
+	
+	// Display grid data
+	if (rowLabels.size() != gridData.size())
+	{
+		printError("Row labels and grid data size mismatch");
+		return;
+	}
+	
+	for (size_t i = 0; i < rowLabels.size(); ++i)
+	{
+		// Print row label
+		std::cout << std::left << std::setw(12) << rowLabels[i];
+		
+		// Print grid cells
+		for (const auto& cell : gridData[i])
+		{
+			std::cout << cell << " ";
+		}
+		println("");
+	}
+	
+	// Display footer lines
+	if (!config.footerLines.empty())
+	{
+		println("");
+		for (const auto& line : config.footerLines)
+		{
+			println(line);
+		}
+	}
+}
+
 // ==================== Formatting Utilities ====================
 
 string UserInterface::formatCurrency(double amount)

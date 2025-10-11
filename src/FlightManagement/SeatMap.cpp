@@ -6,13 +6,9 @@
 
 // ==================== SeatMap Class ====================
 
-// Static member initialization
-UserInterface* SeatMap::ui = nullptr;
-
 // ==================== Constructors ====================
 
-SeatMap::SeatMap(const string& seatLayout, int rows)
-	: seatLayout(seatLayout), rows(rows)
+SeatMap::SeatMap(const string& seatLayout, int rows) : seatLayout(seatLayout), rows(rows)
 {
 	// Validate rows
 	if (rows <= 0)
@@ -264,33 +260,31 @@ int SeatMap::getTotalSeatsCount() const
 	return calculateSeatCount(seatLayout, rows);
 }
 
-// ==================== Display Methods ====================
+// ==================== Display Data Generation Methods ====================
 
-void SeatMap::displaySeatMap(const string& flightNumber, const string& origin, 
-							 const string& destination, const string& aircraftType) const
+void SeatMap::getSeatMapDisplayData(vector<string>& rowLabels, 
+                                    vector<vector<string>>& gridData) const
 {
-	ui->clearScreen();
-	ui->printHeader("SEAT MAP - Flight " + flightNumber);
-	
-	ui->println("Aircraft Type: " + aircraftType);
-	ui->println("Route: " + origin + " → " + destination);
-	ui->println("");
+	rowLabels.clear();
+	gridData.clear();
 	
 	vector<string> allSeats = getAllSeats();
 	vector<int> sections = parseSeatLayout(seatLayout);
 	int seatsPerRow = getSeatsPerRow(seatLayout);
 	
-	ui->println("Legend: [Available] [X Reserved]");
-	ui->printSeparator();
-	
-	// Display seats row by row
+	// Build row by row
 	for (int row = 1; row <= rows; ++row)
 	{
-		string rowDisplay = "Row ";
-		if (row < 10) rowDisplay += " ";
-		rowDisplay += std::to_string(row) + ": ";
+		// Create row label
+		string rowLabel = "Row ";
+		if (row < 10) rowLabel += " ";
+		rowLabel += std::to_string(row) + ":";
+		rowLabels.push_back(rowLabel);
 		
+		// Create grid row with aisle spacing
+		vector<string> gridRow;
 		int seatIndex = 0;
+		
 		for (size_t sectionIdx = 0; sectionIdx < sections.size(); ++sectionIdx)
 		{
 			for (int seatInSection = 0; seatInSection < sections[sectionIdx]; ++seatInSection)
@@ -306,13 +300,12 @@ void SeatMap::displaySeatMap(const string& flightNumber, const string& origin,
 					
 					if (isReserved)
 					{
-						rowDisplay += "[X]";
+						gridRow.push_back("[X]");
 					}
 					else
 					{
-						rowDisplay += "[" + seatNum + "]";
+						gridRow.push_back("[" + seatNum + "]");
 					}
-					rowDisplay += " ";
 				}
 				seatIndex++;
 			}
@@ -320,22 +313,46 @@ void SeatMap::displaySeatMap(const string& flightNumber, const string& origin,
 			// Add aisle spacing (except after last section)
 			if (sectionIdx < sections.size() - 1)
 			{
-				rowDisplay += "  ";
+				gridRow.push_back("  ");  // Aisle marker
 			}
 		}
 		
-		ui->println(rowDisplay);
+		gridData.push_back(gridRow);
 	}
-	
-	ui->println("");
-	ui->println("Total Seats: " + std::to_string(getTotalSeatsCount()));
-	ui->println("Available: " + std::to_string(getAvailableSeatsCount()));
-	ui->println("Reserved: " + std::to_string(reservedSeats.size()));
 }
 
-void SeatMap::displaySampleSeatMap(const string& seatLayout, int rows, int displayRows)
+vector<string> SeatMap::getSeatMapHeader(const string& flightNumber, const string& origin,
+                                         const string& destination, const string& aircraftType) const
 {
-	ui->println("\nSample Seat Map (first " + std::to_string(displayRows) + " rows):");
+	vector<string> header;
+	header.push_back("Aircraft Type: " + aircraftType);
+	header.push_back("Route: " + origin + " → " + destination);
+	return header;
+}
+
+vector<string> SeatMap::getSeatMapLegend() const
+{
+	vector<string> legend;
+	legend.push_back("Legend: [Available] [X Reserved]");
+	return legend;
+}
+
+vector<string> SeatMap::getSeatMapFooter() const
+{
+	vector<string> footer;
+	footer.push_back("Total Seats: " + std::to_string(getTotalSeatsCount()));
+	footer.push_back("Available: " + std::to_string(getAvailableSeatsCount()));
+	footer.push_back("Reserved: " + std::to_string(reservedSeats.size()));
+	return footer;
+}
+
+void SeatMap::getSampleSeatMapDisplayData(const string& seatLayout, int rows,
+                                          vector<string>& rowLabels,
+                                          vector<vector<string>>& gridData,
+                                          int displayRows)
+{
+	rowLabels.clear();
+	gridData.clear();
 	
 	vector<string> seatMap = generateSeatMap(seatLayout, rows);
 	int seatsPerRow = getSeatsPerRow(seatLayout);
@@ -344,40 +361,36 @@ void SeatMap::displaySampleSeatMap(const string& seatLayout, int rows, int displ
 	int rowsToDisplay = std::min(displayRows, rows);
 	for (int row = 0; row < rowsToDisplay; ++row)
 	{
-		string rowDisplay = "Row " + std::to_string(row + 1) + ": ";
+		// Create row label
+		rowLabels.push_back("Row " + std::to_string(row + 1) + ":");
+		
+		// Create grid row
+		vector<string> gridRow;
 		for (int seat = 0; seat < seatsPerRow; ++seat)
 		{
 			int index = row * seatsPerRow + seat;
 			if (index < static_cast<int>(seatMap.size()))
 			{
-				rowDisplay += seatMap[index] + " ";
+				gridRow.push_back(seatMap[index]);
 			}
 		}
-		ui->println(rowDisplay);
+		gridData.push_back(gridRow);
 	}
-	
-	int totalSeats = calculateSeatCount(seatLayout, rows);
-	ui->println("... (" + std::to_string(totalSeats) + " total seats)");
 }
 
-// ==================== Static Initialization ====================
-
-void SeatMap::initializeSeatMapSystem()
+vector<string> SeatMap::getSampleSeatMapFooter(const string& seatLayout, int rows)
 {
-	ui = UserInterface::getInstance();
+	vector<string> footer;
+	int totalSeats = calculateSeatCount(seatLayout, rows);
+	footer.push_back("... (" + std::to_string(totalSeats) + " total seats)");
+	return footer;
 }
 
 // ==================== SeatMapException Class ====================
 
-SeatMapException::SeatMapException(SeatMapErrorCode code)
-	: errorCode(code), additionalInfo("")
-{
-}
+SeatMapException::SeatMapException(SeatMapErrorCode code) : errorCode(code), additionalInfo("") {}
 
-SeatMapException::SeatMapException(SeatMapErrorCode code, const string& info)
-	: errorCode(code), additionalInfo(info)
-{
-}
+SeatMapException::SeatMapException(SeatMapErrorCode code, const string& info) : errorCode(code), additionalInfo(info) {}
 
 const char* SeatMapException::what() const noexcept
 {
@@ -395,24 +408,12 @@ string SeatMapException::getErrorMessage() const noexcept
 	
 	switch (errorCode)
 	{
-		case SeatMapErrorCode::INVALID_SEAT:
-			message = "Invalid seat number";
-			break;
-		case SeatMapErrorCode::SEAT_ALREADY_RESERVED:
-			message = "Seat is already reserved";
-			break;
-		case SeatMapErrorCode::SEAT_NOT_FOUND:
-			message = "Seat not found in reserved list";
-			break;
-		case SeatMapErrorCode::INVALID_LAYOUT:
-			message = "Invalid seat layout";
-			break;
-		case SeatMapErrorCode::INVALID_ROWS:
-			message = "Invalid number of rows. Must be greater than 0";
-			break;
-		default:
-			message = "An unknown seat map error occurred";
-			break;
+		case SeatMapErrorCode::INVALID_SEAT:			message = "Invalid seat number";							break;
+		case SeatMapErrorCode::SEAT_ALREADY_RESERVED:	message = "Seat is already reserved";						break;
+		case SeatMapErrorCode::SEAT_NOT_FOUND:			message = "Seat not found in reserved list";				break;
+		case SeatMapErrorCode::INVALID_LAYOUT:			message = "Invalid seat layout";							break;
+		case SeatMapErrorCode::INVALID_ROWS:			message = "Invalid number of rows. Must be greater than 0";	break;
+		default:										message = "An unknown seat map error occurred";				break;
 	}
 	
 	if (!additionalInfo.empty())

@@ -22,8 +22,6 @@ private:
 	int rows;
 	vector<string> reservedSeats;
 	
-	static UserInterface* ui;
-	
 	// Helper methods
 	static vector<int> parseSeatLayout(const string& layout);
 	static vector<char> generateSeatLetters(const string& layout);
@@ -32,9 +30,6 @@ public:
 	// Constructors
 	SeatMap(const string& seatLayout, int rows);
 	SeatMap(const string& seatLayout, int rows, const vector<string>& reservedSeats);
-	
-	// Static system initialization
-	static void initializeSeatMapSystem();
 	
 	// Static validation methods (used by Aircraft and Flight)
 	static bool validateSeatLayout(const string& layout);
@@ -56,10 +51,23 @@ public:
 	int getAvailableSeatsCount() const;
 	int getTotalSeatsCount() const;
 	
-	// Display methods
-	void displaySeatMap(const string& flightNumber, const string& origin, 
-						const string& destination, const string& aircraftType) const;
-	static void displaySampleSeatMap(const string& seatLayout, int rows, int displayRows = DEFAULT_DISPLAY_ROWS);
+	// Display data generation methods
+	void getSeatMapDisplayData(vector<string>& rowLabels, 
+	                           vector<vector<string>>& gridData) const;
+	
+	vector<string> getSeatMapHeader(const string& flightNumber, const string& origin,
+	                                const string& destination, const string& aircraftType) const;
+	
+	vector<string> getSeatMapLegend() const;
+	
+	vector<string> getSeatMapFooter() const;
+	
+	static void getSampleSeatMapDisplayData(const string& seatLayout, int rows,
+	                                        vector<string>& rowLabels,
+	                                        vector<vector<string>>& gridData,
+	                                        int displayRows = DEFAULT_DISPLAY_ROWS);
+	
+	static vector<string> getSampleSeatMapFooter(const string& seatLayout, int rows);
 	
 	virtual ~SeatMap() noexcept = default;
 };

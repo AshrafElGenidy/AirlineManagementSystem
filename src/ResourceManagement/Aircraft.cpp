@@ -525,11 +525,20 @@ void Aircraft::displayAircraftInfo() const
 	ui->println("Fleet Count: " + std::to_string(aircraftData.value("fleetCount", 0)));
 	ui->println("Status: " + aircraftData.value("status", "N/A"));
 	
-	// Display sample seat map using SeatMap class
+	// Display sample seat map using UI grid display
 	string layout = aircraftData.value("seatLayout", "");
 	int rows = aircraftData.value("rows", 0);
 	
-	SeatMap::displaySampleSeatMap(layout, rows);
+	vector<string> rowLabels;
+	vector<vector<string>> gridData;
+	SeatMap::getSampleSeatMapDisplayData(layout, rows, rowLabels, gridData);
+	
+	GridDisplayConfig config;
+	config.title = "Sample Seat Map (first " + std::to_string(DEFAULT_DISPLAY_ROWS) + " rows)";
+	config.footerLines = SeatMap::getSampleSeatMapFooter(layout, rows);
+	config.showSeparator = false;
+	
+	ui->displayGrid(rowLabels, gridData, config);
 }
 
 // ==================== Helper Functions ====================

@@ -708,8 +708,22 @@ void Flight::displaySeatMap() const
 		// Create SeatMap instance with current reservations
 		SeatMap seatMap(seatLayout, rows, reservedSeats);
 		
-		// Display the seat map
-		seatMap.displaySeatMap(flightNumber, getOrigin(), getDestination(), aircraftType);
+		// Get display data from SeatMap
+		vector<string> rowLabels;
+		vector<vector<string>> gridData;
+		seatMap.getSeatMapDisplayData(rowLabels, gridData);
+		
+		// Configure grid display
+		GridDisplayConfig config;
+		config.title = "SEAT MAP - Flight " + flightNumber;
+		config.headerLines = seatMap.getSeatMapHeader(flightNumber, getOrigin(), getDestination(), aircraftType);
+		config.legend = seatMap.getSeatMapLegend();
+		config.footerLines = seatMap.getSeatMapFooter();
+		config.showSeparator = true;
+		
+		// Display using UI
+		ui->clearScreen();
+		ui->displayGrid(rowLabels, gridData, config);
 	}
 	catch (const std::exception& e)
 	{

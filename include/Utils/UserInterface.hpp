@@ -10,6 +10,19 @@
 using std::string;
 using std::vector;
 
+// ==================== Grid Display Configuration ====================
+
+struct GridDisplayConfig
+{
+	string title;
+	vector<string> headerLines;  // Multiple lines above grid
+	vector<string> legend;       // Legend items
+	vector<string> footerLines;  // Summary info below grid
+	bool showSeparator = true;
+};
+
+// ==================== UserInterface Class ====================
+
 class UserInterface
 {
 private:
@@ -51,6 +64,9 @@ public:
 	// Display utilities
 	void displayMenu(const string& title, const vector<string>& options);
 	void displayTable(const vector<string>& headers, const vector<vector<string>>& rows);
+	void displayGrid(const vector<string>& rowLabels,
+	                 const vector<vector<string>>& gridData,
+	                 const GridDisplayConfig& config = {});
 	
 	// Formatting utilities
 	string formatCurrency(double amount);	
