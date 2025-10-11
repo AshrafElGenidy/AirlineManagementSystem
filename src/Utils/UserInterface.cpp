@@ -77,66 +77,60 @@ string UserInterface::getString(const string& prompt)
 
 int UserInterface::getInt(const string& prompt)
 {
-	while (true)
+	print(prompt);
+	string input;
+	std::getline(std::cin, input);
+	
+	// Remove leading/trailing whitespace
+	input.erase(0, input.find_first_not_of(" \t\n\r"));
+	input.erase(input.find_last_not_of(" \t\n\r") + 1);
+	
+	try
 	{
-		print(prompt);
-		string input;
-		std::getline(std::cin, input);
+		size_t pos;
+		int value = std::stoi(input, &pos);
 		
-		try
+		// Check if entire string was converted
+		if (pos == input.length())
 		{
-			// Remove leading/trailing whitespace
-			input.erase(0, input.find_first_not_of(" \t\n\r"));
-			input.erase(input.find_last_not_of(" \t\n\r") + 1);
-			
-			size_t pos;
-			int value = std::stoi(input, &pos);
-			
-			// Check if entire string was converted
-			if (pos == input.length())
-			{
-				return value;
-			}
+			return value;
 		}
-		catch (...)
-		{
-			// Invalid input, will retry
-		}
-		
-		printError("Invalid input. Please enter a valid integer.");
 	}
+	catch (...)
+	{
+		// Will throw exception below
+	}
+	
+	throw UIException(UIErrorCode::INVALID_INTEGER_INPUT);
 }
 
 double UserInterface::getDouble(const string& prompt)
 {
-	while (true)
+	print(prompt);
+	string input;
+	std::getline(std::cin, input);
+	
+	// Remove leading/trailing whitespace
+	input.erase(0, input.find_first_not_of(" \t\n\r"));
+	input.erase(input.find_last_not_of(" \t\n\r") + 1);
+	
+	try
 	{
-		print(prompt);
-		string input;
-		std::getline(std::cin, input);
+		size_t pos;
+		double value = std::stod(input, &pos);
 		
-		try
+		// Check if entire string was converted
+		if (pos == input.length())
 		{
-			// Remove leading/trailing whitespace
-			input.erase(0, input.find_first_not_of(" \t\n\r"));
-			input.erase(input.find_last_not_of(" \t\n\r") + 1);
-			
-			size_t pos;
-			double value = std::stod(input, &pos);
-			
-			// Check if entire string was converted
-			if (pos == input.length())
-			{
-				return value;
-			}
+			return value;
 		}
-		catch (...)
-		{
-			// Invalid input, will retry
-		}
-		
-		printError("Invalid input. Please enter a valid number.");
 	}
+	catch (...)
+	{
+		// Will throw exception below
+	}
+	
+	throw UIException(UIErrorCode::INVALID_DOUBLE_INPUT);
 }
 
 string UserInterface::getPassword(const string& prompt)
@@ -157,7 +151,7 @@ string UserInterface::getPassword(const string& prompt)
 				std::cout << "\b \b";  // Erase character from console
 			}
 		}
-		else
+		else if (std::isprint(static_cast<unsigned char>(ch)))  // Only printable characters
 		{
 			password += ch;
 			std::cout << '*';
@@ -171,52 +165,72 @@ string UserInterface::getPassword(const string& prompt)
 	newSettings.c_lflag &= ~ECHO;  // Disable echo
 	tcsetattr(STDIN_FILENO, TCSANOW, &newSettings);
 	
-	std::getline(std::cin, password);
+	char ch;
+	while ((ch = std::getchar()) != '\n')
+	{
+		if (ch == '\b' || ch == 127)  // Backspace or Delete
+		{
+			if (!password.empty())
+			{
+				password.pop_back();
+				std::cout << "\b \b";  // Erase character from console
+			}
+		}
+		else if (std::isprint(static_cast<unsigned char>(ch)))  // Only printable characters
+		{
+			password += ch;
+			std::cout << '*';
+		}
+	}
 	
 	tcsetattr(STDIN_FILENO, TCSANOW, &oldSettings);  // Restore echo
 #endif
 	
 	std::cout << std::endl;
+	
+	// Validate password is not empty
+	if (password.empty())
+	{
+		throw UIException(UIErrorCode::INVALID_PASSWORD_INPUT);
+	}
+	
 	return password;
 }
 
 int UserInterface::getChoice(const string& prompt, int min, int max)
 {
-	while (true)
+	int choice = getInt(prompt);
+	
+	if (choice < min || choice > max)
 	{
-		int choice = getInt(prompt);
-		
-		if (choice >= min && choice <= max)
-		{
-			return choice;
-		}
-		
-		printError("Invalid choice. Please enter a number between " + 
-		          std::to_string(min) + " and " + std::to_string(max) + ".");
+		throw UIException(UIErrorCode::INVALID_CHOICE);
 	}
+	
+	return choice;
 }
 
 bool UserInterface::getYesNo(const string& prompt)
 {
-	while (true)
+	string input = getString(prompt + " (yes/no): ");
+	
+	// Convert to lowercase
+	std::transform(input.begin(), input.end(), input.begin(),
+	              [](unsigned char c){ return std::tolower(c); });
+	
+	// Remove leading/trailing whitespace
+	input.erase(0, input.find_first_not_of(" \t\n\r"));
+	input.erase(input.find_last_not_of(" \t\n\r") + 1);
+	
+	if (input == "yes" || input == "y" || input == "1")
 	{
-		string input = getString(prompt + " (yes/no): ");
-		
-		// Convert to lowercase
-		std::transform(input.begin(), input.end(), input.begin(),
-		              [](unsigned char c){ return std::tolower(c); });
-		
-		if (input == "yes" || input == "y" || input == "Y" || input == "1")
-		{
-			return true;
-		}
-		else if (input == "no" || input == "n" || input == "N" || input == "0")
-		{
-			return false;
-		}
-		
-		printError("Invalid input. Please enter 'yes' or 'no'.");
+		return true;
 	}
+	else if (input == "no" || input == "n" || input == "0")
+	{
+		return false;
+	}
+	
+	throw UIException(UIErrorCode::INVALID_YES_NO_INPUT);
 }
 
 string UserInterface::getDate(const string& prompt, const string& format)
@@ -377,4 +391,41 @@ string UserInterface::formatCurrency(double amount)
 	std::ostringstream oss;
 	oss << std::fixed << std::setprecision(2) << "$" << amount;
 	return oss.str();
+}
+
+// ==================== UIException Class ====================
+
+UIException::UIException(UIErrorCode code) : errorCode(code) {}
+
+const char* UIException::what() const noexcept
+{
+	static string message;
+	message = getErrorMessage();
+	return message.c_str();
+}
+
+UIErrorCode UIException::getErrorCode() const noexcept
+{
+	return errorCode;
+}
+
+string UIException::getErrorMessage() const noexcept
+{
+	switch (errorCode)
+	{
+		case UIErrorCode::INVALID_INTEGER_INPUT:
+			return "Invalid input. Please enter a valid integer.";
+		case UIErrorCode::INVALID_DOUBLE_INPUT:
+			return "Invalid input. Please enter a valid number.";
+		case UIErrorCode::INVALID_CHOICE:
+			return "Invalid choice. Please enter a valid option.";
+		case UIErrorCode::INVALID_YES_NO_INPUT:
+			return "Invalid input. Please enter 'yes' or 'no'.";
+		case UIErrorCode::USER_CANCELED:
+			return "Operation canceled by user.";
+		case UIErrorCode::INVALID_PASSWORD_INPUT:
+			return "Password cannot be empty.";
+		default:
+			return "An unknown UI error occurred.";
+	}
 }

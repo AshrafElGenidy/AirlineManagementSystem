@@ -6,6 +6,7 @@
 #include <functional>
 #include <sstream>
 #include <limits>
+#include <exception>
 
 using std::string;
 using std::vector;
@@ -31,9 +32,11 @@ private:
 	// Private constructor for singleton
 	UserInterface() = default;
 	
-	// Delete copy constructor and assignment operator
+	// Delete copy, move constructors and assignment operators
 	UserInterface(const UserInterface&) = delete;
+	UserInterface(UserInterface&&) = delete;
 	UserInterface& operator=(const UserInterface&) = delete;
+	UserInterface& operator=(UserInterface&&) = delete;
 
 public:
 	// Singleton accessor
@@ -48,7 +51,8 @@ public:
 	void printHeader(const string& header);
 	void printSeparator();
 	
-	// Input methods
+	// Input methods - now throw UIException on invalid input
+	// Callers should catch and handle, or retry themselves
 	string getString(const string& prompt);
 	int getInt(const string& prompt);
 	double getDouble(const string& prompt);
@@ -70,6 +74,31 @@ public:
 	
 	// Formatting utilities
 	string formatCurrency(double amount);	
+};
+
+// ==================== UI Exception Class ====================
+
+enum class UIErrorCode
+{
+	INVALID_INTEGER_INPUT,
+	INVALID_DOUBLE_INPUT,
+	INVALID_CHOICE,
+	INVALID_YES_NO_INPUT,
+	USER_CANCELED,
+	INVALID_PASSWORD_INPUT
+};
+
+class UIException : public std::exception
+{
+private:
+	UIErrorCode errorCode;
+	string getErrorMessage() const noexcept;
+
+public:
+	UIException(UIErrorCode code);
+	const char* what() const noexcept override;
+	virtual ~UIException() noexcept = default;
+	UIErrorCode getErrorCode() const noexcept;
 };
 
 #endif // USERINTERFACE_HPP
