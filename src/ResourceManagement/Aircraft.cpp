@@ -5,6 +5,7 @@
 #include <cctype>
 #include <iomanip>
 #include "Aircraft.hpp"
+#include "SeatMap.hpp"
 
 // ==================== Aircraft Class ====================
 
@@ -39,13 +40,24 @@ Aircraft::Aircraft()
 	
 	string seatLayout = ui->getString("Enter Seat Layout (e.g., 3-3 for 3 seats-aisle-3 seats): ");
 	
-	// Validate seat layout
-	if (!validateSeatLayout(seatLayout))
+	// Validate seat layout using SeatMap
+	if (!SeatMap::validateSeatLayout(seatLayout))
 	{
 		throw AircraftException(AircraftErrorCode::INVALID_SEAT_LAYOUT);
 	}
 	
 	int rows = ui->getInt("Enter Number of Rows: ");
+	
+	// Validate rows and that layout produces valid seats
+	try
+	{
+		SeatMap tempSeatMap(seatLayout, rows);
+	}
+	catch (const SeatMapException& e)
+	{
+		throw AircraftException(AircraftErrorCode::INVALID_SEAT_LAYOUT);
+	}
+	
 	int fleetCount = ui->getInt("Enter Fleet Count (number of aircraft owned): ");
 	string status = selectAircraftStatus();
 
@@ -92,40 +104,6 @@ bool Aircraft::validateAircraftType(const string& aircraftType)
 	// Check characters (alphanumeric only, no spaces)
 	return std::all_of(aircraftType.begin(), aircraftType.end(), 
 		[](unsigned char c) { return std::isalnum(c); });
-}
-
-bool Aircraft::validateSeatLayout(const string& layout)
-{
-	// Expected format: "N-N" or "N-N-N" where N is a digit
-	// Examples: "3-3", "2-4-2", "3-4-3"
-	
-	if (layout.empty())
-	{
-		return false;
-	}
-	
-	// Check that layout contains only digits and hyphens
-	for (char c : layout)
-	{
-		if (!std::isdigit(c) && c != '-')
-		{
-			return false;
-		}
-	}
-	
-	// Check that it starts and ends with a digit
-	if (!std::isdigit(layout.front()) || !std::isdigit(layout.back()))
-	{
-		return false;
-	}
-	
-	// Check for consecutive hyphens
-	if (layout.find("--") != string::npos)
-	{
-		return false;
-	}
-	
-	return true;
 }
 
 // ==================== Aircraft Management Menu ====================
@@ -302,11 +280,6 @@ void Aircraft::updateAircraftDetails()
 	ui->clearScreen();
 	ui->printHeader("--- Update Aircraft Details ---");
 
-	if (!db->entryExists(aircraftType))
-	{
-		throw AircraftException(AircraftErrorCode::AIRCRAFT_NOT_FOUND);
-	}
-
 	json aircraftData = db->getEntry(aircraftType);
 
 	ui->println("Current Aircraft Information:");
@@ -354,16 +327,40 @@ void Aircraft::updateAircraftDetails()
 			case 4:
 			{
 				string newLayout = ui->getString("Enter new Seat Layout (e.g., 3-3): ");
-				if (!validateSeatLayout(newLayout))
+				if (!SeatMap::validateSeatLayout(newLayout))
 				{
 					throw AircraftException(AircraftErrorCode::INVALID_SEAT_LAYOUT);
 				}
+				
+				// Validate with current rows
+				int currentRows = aircraftData.value("rows", 0);
+				try
+				{
+					SeatMap tempSeatMap(newLayout, currentRows);
+				}
+				catch (const SeatMapException& e)
+				{
+					throw AircraftException(AircraftErrorCode::INVALID_SEAT_LAYOUT);
+				}
+				
 				db->setAttribute(aircraftType, "seatLayout", newLayout);
 				break;
 			}
 			case 5:
 			{
 				int newRows = ui->getInt("Enter new Number of Rows: ");
+				
+				// Validate with current layout
+				string currentLayout = aircraftData.value("seatLayout", "");
+				try
+				{
+					SeatMap tempSeatMap(currentLayout, newRows);
+				}
+				catch (const SeatMapException& e)
+				{
+					throw AircraftException(AircraftErrorCode::INVALID_SEAT_LAYOUT);
+				}
+				
 				db->setAttribute(aircraftType, "rows", newRows);
 				break;
 			}
@@ -486,7 +483,7 @@ void Aircraft::setTotalSeats(int seats)
 
 void Aircraft::setSeatLayout(const string& layout)
 {
-	if (!validateSeatLayout(layout))
+	if (!SeatMap::validateSeatLayout(layout))
 	{
 		throw AircraftException(AircraftErrorCode::INVALID_SEAT_LAYOUT);
 	}
@@ -509,140 +506,30 @@ void Aircraft::setStatus(const string& status)
 	db->setAttribute(aircraftType, "status", status);
 }
 
-// ==================== Seat Management ====================
-
-vector<string> Aircraft::generateSeatMap() const
-{
-	vector<string> seatMap;
-	
-	string layout = db->getAttribute(aircraftType, "seatLayout");
-	int rows = db->getAttribute(aircraftType, "rows");
-	
-	// Parse seat layout (e.g., "3-3" means 3 seats, aisle, 3 seats)
-	vector<int> sections;
-	std::stringstream ss(layout);
-	string section;
-	
-	while (std::getline(ss, section, '-'))
-	{
-		sections.push_back(std::stoi(section));
-	}
-	
-	// Generate seat letters based on layout
-	vector<char> seatLetters;
-	char currentLetter = 'A';
-	
-	for (size_t i = 0; i < sections.size(); ++i)
-	{
-		for (int j = 0; j < sections[i]; ++j)
-		{
-			seatLetters.push_back(currentLetter++);
-		}
-		
-		// Skip a letter for aisle (except after last section)
-		if (i < sections.size() - 1)
-		{
-			currentLetter++;
-		}
-	}
-	
-	// Generate all seat numbers (e.g., 1A, 1B, 1C, ..., 30F)
-	for (int row = 1; row <= rows; ++row)
-	{
-		for (char letter : seatLetters)
-		{
-			seatMap.push_back(std::to_string(row) + letter);
-		}
-	}
-	
-	return seatMap;
-}
-
-bool Aircraft::isValidSeat(const string& seatNumber) const
-{
-	if (seatNumber.empty())
-	{
-		return false;
-	}
-	
-	// Extract row number and seat letter
-	size_t letterPos = 0;
-	while (letterPos < seatNumber.length() && std::isdigit(seatNumber[letterPos]))
-	{
-		++letterPos;
-	}
-	
-	if (letterPos == 0 || letterPos == seatNumber.length())
-	{
-		return false; // No row number or no seat letter
-	}
-	
-	string rowStr = seatNumber.substr(0, letterPos);
-	string seatLetter = seatNumber.substr(letterPos);
-	
-	// Validate row number
-	int row = std::stoi(rowStr);
-	int rows = db->getAttribute(aircraftType, "rows");
-	if (row < 1 || row > rows)
-	{
-		return false;
-	}
-	
-	// Validate seat letter exists in this aircraft's layout
-	vector<string> allSeats = generateSeatMap();
-	return std::find(allSeats.begin(), allSeats.end(), seatNumber) != allSeats.end();
-}
-
-int Aircraft::getSeatCount() const
-{
-	return generateSeatMap().size();
-}
-
 // ==================== Utility ====================
 
 void Aircraft::displayAircraftInfo() const
 {
 	ui->clearScreen();
 	ui->printHeader("AIRCRAFT INFORMATION");
+	
+	// Load all data at once using bulk operation
+	json aircraftData = db->getEntry(aircraftType);
+	
 	ui->println("Aircraft Type: " + getAircraftType());
-	ui->println("Manufacturer: " + getManufacturer());
-	ui->println("Model: " + getModel());
-	ui->println("Total Seats: " + std::to_string(getTotalSeats()));
-	ui->println("Seat Layout: " + getSeatLayout());
-	ui->println("Rows: " + std::to_string(getRows()));
-	ui->println("Fleet Count: " + std::to_string(getFleetCount()));
-	ui->println("Status: " + getStatus());
+	ui->println("Manufacturer: " + aircraftData.value("manufacturer", "N/A"));
+	ui->println("Model: " + aircraftData.value("model", "N/A"));
+	ui->println("Total Seats: " + std::to_string(aircraftData.value("totalSeats", 0)));
+	ui->println("Seat Layout: " + aircraftData.value("seatLayout", "N/A"));
+	ui->println("Rows: " + std::to_string(aircraftData.value("rows", 0)));
+	ui->println("Fleet Count: " + std::to_string(aircraftData.value("fleetCount", 0)));
+	ui->println("Status: " + aircraftData.value("status", "N/A"));
 	
-	// Display sample seat map
-	ui->println("\nSample Seat Map (first 3 rows):");
-	vector<string> seatMap = generateSeatMap();
-	string layout = getSeatLayout();
+	// Display sample seat map using SeatMap class
+	string layout = aircraftData.value("seatLayout", "");
+	int rows = aircraftData.value("rows", 0);
 	
-	// Parse layout to determine seats per row
-	int seatsPerRow = 0;
-	std::stringstream ss(layout);
-	string section;
-	while (std::getline(ss, section, '-'))
-	{
-		seatsPerRow += std::stoi(section);
-	}
-	
-	// Display first 3 rows
-	int displayRows = std::min(3, getRows());
-	for (int row = 0; row < displayRows; ++row)
-	{
-		string rowDisplay = "Row " + std::to_string(row + 1) + ": ";
-		for (int seat = 0; seat < seatsPerRow; ++seat)
-		{
-			int index = row * seatsPerRow + seat;
-			if (index < static_cast<int>(seatMap.size()))
-			{
-				rowDisplay += seatMap[index] + " ";
-			}
-		}
-		ui->println(rowDisplay);
-	}
-	ui->println("... (" + std::to_string(getSeatCount()) + " total seats)");
+	SeatMap::displaySampleSeatMap(layout, rows);
 }
 
 // ==================== Helper Functions ====================

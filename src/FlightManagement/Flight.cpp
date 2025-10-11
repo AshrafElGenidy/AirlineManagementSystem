@@ -6,6 +6,7 @@
 #include <iomanip>
 #include "Flight.hpp"
 #include "Aircraft.hpp"
+#include "SeatMap.hpp"
 
 // ==================== Flight Class ====================
 
@@ -193,13 +194,22 @@ void Flight::viewAllFlights()
 				if (!aircraftType.empty())
 				{
 					Aircraft aircraft(aircraftType);
-					totalSeats = aircraft.getTotalSeats();
+					string seatLayout = aircraft.getSeatLayout();
+					int rows = aircraft.getRows();
+					totalSeats = SeatMap::calculateSeatCount(seatLayout, rows);
 					reserved = flightData.contains("reservedSeats") ? (int)flightData["reservedSeats"].size() : 0;
 					available = totalSeats - reserved;
 				}
 			}
-			catch (const AircraftException&)
+			catch (const AircraftException& e)
 			{
+				// Aircraft not found, continue with zeros
+				totalSeats = 0;
+				available = 0;
+			}
+			catch (const SeatMapException& e)
+			{
+				// Invalid seat configuration, continue with zeros
 				totalSeats = 0;
 				available = 0;
 			}
@@ -285,11 +295,6 @@ void Flight::updateFlightDetails()
 	ui->clearScreen();
 	ui->printHeader("--- Update Flight Details ---");
 
-	if (!db->entryExists(flightNumber))
-	{
-		throw FlightException(FlightErrorCode::FLIGHT_NOT_FOUND);
-	}
-
 	json flightData = db->getEntry(flightNumber);
 
 	ui->println("Current Flight Information:");
@@ -356,16 +361,67 @@ void Flight::updateFlightDetails()
 				int typeChoice = ui->getChoice("Select aircraft type: ", 1, aircraftTypes.size());
 				string newAircraftType = aircraftTypes[typeChoice - 1];
 				
-				// TODO: Check if changing aircraft type affects existing reservations
-				// Should verify that all reserved seats are valid in new aircraft type
+				// Validate reserved seats against new aircraft type
 				if (flightData.contains("reservedSeats") && !flightData["reservedSeats"].empty())
 				{
 					ui->printWarning("Warning: This flight has existing seat reservations.");
-					ui->printWarning("Changing aircraft type may invalidate some reservations.");
-					bool confirm = ui->getYesNo("Continue with aircraft type change?");
-					if (!confirm)
+					
+					try
 					{
-						ui->printWarning("Aircraft type change canceled.");
+						// Get new aircraft seat configuration
+						Aircraft newAircraft(newAircraftType);
+						string newLayout = newAircraft.getSeatLayout();
+						int newRows = newAircraft.getRows();
+						
+						// Create SeatMap for new aircraft
+						SeatMap newSeatMap(newLayout, newRows);
+						
+						// Validate each reserved seat against new aircraft
+						vector<string> invalidSeats;
+						for (const auto& seat : flightData["reservedSeats"])
+						{
+							string seatNumber = seat.get<string>();
+							if (!newSeatMap.isValidSeat(seatNumber))
+							{
+								invalidSeats.push_back(seatNumber);
+							}
+						}
+						
+						if (!invalidSeats.empty())
+						{
+							ui->printError("The following reserved seats are invalid for the new aircraft type:");
+							for (const auto& seat : invalidSeats)
+							{
+								ui->println("  - " + seat);
+							}
+							ui->printWarning("Changing aircraft type will invalidate these reservations.");
+							
+							bool confirm = ui->getYesNo("Continue with aircraft type change?");
+							if (!confirm)
+							{
+								ui->printWarning("Aircraft type change canceled.");
+								break;
+							}
+						}
+						else
+						{
+							ui->printSuccess("All reserved seats are valid for the new aircraft type.");
+							bool confirm = ui->getYesNo("Continue with aircraft type change?");
+							if (!confirm)
+							{
+								ui->printWarning("Aircraft type change canceled.");
+								break;
+							}
+						}
+					}
+					catch (const AircraftException& e)
+					{
+						ui->printError("Error validating new aircraft type: " + string(e.what()));
+						break;
+					}
+					catch (const SeatMapException& e)
+					{
+						ui->printError("Error validating seats: " + string(e.what()));
 						break;
 					}
 				}
@@ -476,12 +532,17 @@ int Flight::getTotalSeats() const
 	try
 	{
 		Aircraft aircraft(aircraftType);
-		return aircraft.getTotalSeats();
+		string seatLayout = aircraft.getSeatLayout();
+		int rows = aircraft.getRows();
+		return SeatMap::calculateSeatCount(seatLayout, rows);
 	}
 	catch (const AircraftException& e)
 	{
-		ui->printError("Aircraft type not found: " + aircraftType);
-		return 0;
+		throw FlightException(FlightErrorCode::INVALID_AIRCRAFT_TYPE);
+	}
+	catch (const SeatMapException& e)
+	{
+		throw FlightException(FlightErrorCode::DATABASE_ERROR);
 	}
 }
 
@@ -554,58 +615,56 @@ vector<string> Flight::getReservedSeats() const
 
 bool Flight::reserveSeat(const string& seatNumber)
 {
-	// First, validate seat exists in aircraft type
+	// Get aircraft information
 	string aircraftType = getAircraftType();
 	
 	try
 	{
 		Aircraft aircraft(aircraftType);
+		string seatLayout = aircraft.getSeatLayout();
+		int rows = aircraft.getRows();
 		
-		if (!aircraft.isValidSeat(seatNumber))
+		// Get current reserved seats from database
+		vector<string> currentReservedSeats = getReservedSeats();
+		
+		// Create SeatMap instance with current reservations
+		SeatMap seatMap(seatLayout, rows, currentReservedSeats);
+		
+		// Try to reserve the seat (will throw exception if invalid or already reserved)
+		seatMap.reserveSeat(seatNumber);
+		
+		// Update database with new reservation
+		json reservedSeats = db->getAttribute(flightNumber, "reservedSeats");
+		
+		if (!reservedSeats.is_array())
 		{
-			ui->printError("Invalid seat number '" + seatNumber + "' for aircraft type " + aircraftType);
-			return false;
+			reservedSeats = json::array();
 		}
+		
+		reservedSeats.push_back(seatNumber);
+		db->setAttribute(flightNumber, "reservedSeats", reservedSeats);
+		
+		return true;
+	}
+	catch (const SeatMapException& e)
+	{
+		ui->printError(string(e.what()));
+		return false;
 	}
 	catch (const AircraftException& e)
 	{
-		ui->printError("Error validating seat: " + string(e.what()));
+		ui->printError(string(e.what()));
 		return false;
 	}
-	
-	// Check if seat is already reserved
-	if (!isSeatAvailable(seatNumber))
+	catch (const std::exception& e)
 	{
-		ui->printError("Seat " + seatNumber + " is already reserved.");
+		ui->printError("Error reserving seat: " + string(e.what()));
 		return false;
 	}
-	
-	// Add seat to reservedSeats array
-	if (!db->entryExists(flightNumber))
-	{
-		throw FlightException(FlightErrorCode::FLIGHT_NOT_FOUND);
-	}
-	
-	json reservedSeats = db->getAttribute(flightNumber, "reservedSeats");
-	
-	if (!reservedSeats.is_array())
-	{
-		reservedSeats = json::array();
-	}
-	
-	reservedSeats.push_back(seatNumber);
-	db->setAttribute(flightNumber, "reservedSeats", reservedSeats);
-	
-	return true;
 }
 
 bool Flight::releaseSeat(const string& seatNumber)
 {
-	if (!db->entryExists(flightNumber))
-	{
-		throw FlightException(FlightErrorCode::FLIGHT_NOT_FOUND);
-	}
-	
 	json reservedSeats = db->getAttribute(flightNumber, "reservedSeats");
 	
 	if (!reservedSeats.is_array())
@@ -637,89 +696,22 @@ bool Flight::isSeatAvailable(const string& seatNumber) const
 
 void Flight::displaySeatMap() const
 {
-	ui->clearScreen();
-	ui->printHeader("SEAT MAP - Flight " + flightNumber);
-	
-	string aircraftType = getAircraftType();
-	ui->println("Aircraft Type: " + aircraftType);
-	ui->println("Route: " + getOrigin() + " → " + getDestination());
-	ui->println("");
-	
 	try
 	{
+		string aircraftType = getAircraftType();
 		Aircraft aircraft(aircraftType);
-		vector<string> allSeats = aircraft.generateSeatMap();
+		
+		string seatLayout = aircraft.getSeatLayout();
+		int rows = aircraft.getRows();
 		vector<string> reservedSeats = getReservedSeats();
 		
-		string layout = aircraft.getSeatLayout();
+		// Create SeatMap instance with current reservations
+		SeatMap seatMap(seatLayout, rows, reservedSeats);
 		
-		// Parse layout to determine seats per row
-		int seatsPerRow = 0;
-		std::stringstream ss(layout);
-		string section;
-		vector<int> sections;
-		
-		while (std::getline(ss, section, '-'))
-		{
-			int sectionSize = std::stoi(section);
-			sections.push_back(sectionSize);
-			seatsPerRow += sectionSize;
-		}
-		
-		ui->println("Legend: [Available] [X Reserved]");
-		ui->printSeparator();
-		
-		// Display seats row by row
-		int rows = aircraft.getRows();
-		for (int row = 1; row <= rows; ++row)
-		{
-			string rowDisplay = "Row ";
-			if (row < 10) rowDisplay += " ";
-			rowDisplay += std::to_string(row) + ": ";
-			
-			int seatIndex = 0;
-			for (size_t sectionIdx = 0; sectionIdx < sections.size(); ++sectionIdx)
-			{
-				for (int seatInSection = 0; seatInSection < sections[sectionIdx]; ++seatInSection)
-				{
-					int globalIndex = (row - 1) * seatsPerRow + seatIndex;
-					if (globalIndex < static_cast<int>(allSeats.size()))
-					{
-						string seatNum = allSeats[globalIndex];
-						
-						// Check if seat is reserved
-						bool isReserved = std::find(reservedSeats.begin(), reservedSeats.end(), seatNum) 
-										 != reservedSeats.end();
-						
-						if (isReserved)
-						{
-							rowDisplay += "[X]";
-						}
-						else
-						{
-							rowDisplay += "[" + seatNum + "]";
-						}
-						rowDisplay += " ";
-					}
-					seatIndex++;
-				}
-				
-				// Add aisle spacing (except after last section)
-				if (sectionIdx < sections.size() - 1)
-				{
-					rowDisplay += "  ";
-				}
-			}
-			
-			ui->println(rowDisplay);
-		}
-		
-		ui->println("");
-		ui->println("Total Seats: " + std::to_string(getTotalSeats()));
-		ui->println("Available: " + std::to_string(getAvailableSeats()));
-		ui->println("Reserved: " + std::to_string(reservedSeats.size()));
+		// Display the seat map
+		seatMap.displaySeatMap(flightNumber, getOrigin(), getDestination(), aircraftType);
 	}
-	catch (const AircraftException& e)
+	catch (const std::exception& e)
 	{
 		ui->printError("Error displaying seat map: " + string(e.what()));
 	}
@@ -731,17 +723,20 @@ void Flight::displayFlightInfo() const
 {
 	ui->clearScreen();
 	ui->printHeader("FLIGHT INFORMATION");
+	
+	json flightData = db->getEntry(flightNumber);
+	
 	ui->println("Flight Number: " + getFlightNumber());
-	ui->println("Origin: " + getOrigin());
-	ui->println("Destination: " + getDestination());
-	ui->println("Departure: " + getDepartureDateTime());
-	ui->println("Arrival: " + getArrivalDateTime());
-	ui->println("Aircraft Type: " + getAircraftType());
-	ui->println("Status: " + getStatus());
-	ui->println("Price: $" + std::to_string(getPrice()));
+	ui->println("Origin: " + flightData.value("origin", "N/A"));
+	ui->println("Destination: " + flightData.value("destination", "N/A"));
+	ui->println("Departure: " + flightData.value("departureDateTime", "N/A"));
+	ui->println("Arrival: " + flightData.value("arrivalDateTime", "N/A"));
+	ui->println("Aircraft Type: " + flightData.value("aircraftType", "N/A"));
+	ui->println("Status: " + flightData.value("status", "N/A"));
+	ui->println("Price: $" + std::to_string(flightData.value("price", 0.0)));
 	ui->println("Available Seats: " + std::to_string(getAvailableSeats()) + " / " + std::to_string(getTotalSeats()));
-	ui->println("Gate: " + getGate());
-	ui->println("Boarding Time: " + getBoardingTime());
+	ui->println("Gate: " + flightData.value("gate", "N/A"));
+	ui->println("Boarding Time: " + flightData.value("boardingTime", "N/A"));
 }
 
 // ==================== Helper Functions ====================

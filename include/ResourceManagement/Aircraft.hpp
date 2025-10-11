@@ -31,7 +31,6 @@ private:
 	
 	// Helpers
 	static bool validateAircraftType(const string& aircraftType);
-	static bool validateSeatLayout(const string& layout);
 	static string selectAircraftStatus();
 	
 	// Aircraft Management
@@ -43,9 +42,11 @@ private:
 	
 	// Constructors
 	Aircraft();										// For new aircraft types
-	explicit Aircraft(const string& aircraftType);	// For existing aircraft types
 	
 public:
+	// Constructors
+	explicit Aircraft(const string& aircraftType);	// For existing aircraft types
+	
 	// Static system initialization
 	static void initializeAircraftSystem();
 	
@@ -75,17 +76,10 @@ public:
 	void setFleetCount(int count);
 	void setStatus(const string& status);
 	
-	// Seat Management (for use by Flight class)
-	vector<string> generateSeatMap() const;
-	bool isValidSeat(const string& seatNumber) const;
-	int getSeatCount() const;
-	
 	// Utility
 	void displayAircraftInfo() const;
 	
 	virtual ~Aircraft() noexcept = default;
-
-	friend class Flight;
 };
 
 // ==================== Aircraft Exception Class ====================
