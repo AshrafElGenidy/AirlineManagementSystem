@@ -6,83 +6,66 @@
 #include <exception>
 #include <memory>
 #include "json.hpp"
-#include "UserInterface.hpp"
-#include "Database.hpp"
 
 using nlohmann::json;
 using std::string;
 using std::vector;
-using std::unique_ptr;
 
-static constexpr int MIN_FLIGHT_NUMBER_LENGTH = 3;
-static constexpr int MAX_FLIGHT_NUMBER_LENGTH = 10;
-
-// ==================== Flight Class ====================
+// ==================== Flight Class (Pure Data) ====================
 
 class Flight
 {
 private:
 	string flightNumber;
+	string origin;
+	string destination;
+	string departureDateTime;
+	string arrivalDateTime;
+	string aircraftType;
+	string status;
+	double price;
+	string gate;
+	string boardingTime;
+	vector<string> reservedSeats;
 	
-	// Static data members
-	static UserInterface* ui;
-	static std::unique_ptr<Database> db;
+	// Private constructors - only FlightManager and FlightCreator can create
+	Flight(const string& flightNumber, const string& origin, const string& destination,
+	       const string& departureDateTime, const string& arrivalDateTime,
+	       const string& aircraftType, const string& status, double price,
+	       const string& gate, const string& boardingTime,
+	       const vector<string>& reservedSeats = {});
 	
-	// Helpers
-	string selectFlightStatus();
-	static bool validateFlightNumber(const string& flightNumber);
-
-	// Flight Management
-	static void addFlight();
-	static void viewAllFlights();
-	static void updateFlight();
-	static void removeFlight();
-	void updateFlightDetails();
-	
-	// Constructors
-	Flight();										// For new flights
-	explicit Flight(const string& flightNumber);	// For existing flights
+	friend class FlightManager;
+	friend class FlightCreator;
 	
 public:
-	// Static system initialization
-	static void initializeFlightSystem();
-	
-	// Flight Management
-	static void manageFlights();
-	
-	// Operational methods
-	static vector<unique_ptr<Flight>> searchFlights(const string& origin, const string& destination, const string& departureDate);
-	
 	// Getters
 	string getFlightNumber() const noexcept;
-	string getOrigin() const;
-	string getDestination() const;
-	string getDepartureDateTime() const;
-	string getArrivalDateTime() const;
-	string getAircraftType() const;
-	string getStatus() const;
-	double getPrice() const;
+	string getOrigin() const noexcept;
+	string getDestination() const noexcept;
+	string getDepartureDateTime() const noexcept;
+	string getArrivalDateTime() const noexcept;
+	string getAircraftType() const noexcept;
+	string getStatus() const noexcept;
+	double getPrice() const noexcept;
 	int getTotalSeats() const;
 	int getAvailableSeats() const;
-	string getGate() const;
-	string getBoardingTime() const;
+	string getGate() const noexcept;
+	string getBoardingTime() const noexcept;
+	vector<string> getReservedSeats() const noexcept;
 	
 	// Setters
-	void setStatus(const string& status);
-	void setPrice(double price);
-	void setGate(const string& gate);
-	void setBoardingTime(const string& boardingTime);
+	void setStatus(const string& status) noexcept;
+	void setPrice(double price) noexcept;
+	void setGate(const string& gate) noexcept;
+	void setBoardingTime(const string& boardingTime) noexcept;
 	
-	// Seat Management
-	vector<string> getReservedSeats() const;
+	// Seat management
 	bool reserveSeat(const string& seatNumber);
 	bool releaseSeat(const string& seatNumber);
-	bool isSeatAvailable(const string& seatNumber) const;
-	void displaySeatMap() const;
+	bool isSeatAvailable(const string& seatNumber) const noexcept;
 	
-	// Utility
-	void displayFlightInfo() const;
-	
+	// Destructor
 	virtual ~Flight() noexcept = default;
 };
 
@@ -94,6 +77,10 @@ enum class FlightErrorCode
 	FLIGHT_EXISTS,
 	INVALID_FLIGHT_NUMBER,
 	INVALID_AIRCRAFT_TYPE,
+	INVALID_ORIGIN,
+	INVALID_DESTINATION,
+	INVALID_DATE_FORMAT,
+	SEAT_OPERATION_FAILED,
 	DATABASE_ERROR
 };
 
@@ -101,10 +88,12 @@ class FlightException : public std::exception
 {
 private:
 	FlightErrorCode errorCode;
+	string message;
 	string getErrorMessage() const noexcept;
 
 public:
 	FlightException(FlightErrorCode code);
+	FlightException(FlightErrorCode code, const string& customMessage);
 	const char* what() const noexcept override;
 	virtual ~FlightException() noexcept = default;
 	FlightErrorCode getErrorCode() const noexcept;

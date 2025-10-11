@@ -1,0 +1,601 @@
+#include <iostream>
+#include <algorithm>
+#include <iomanip>
+#include "FlightManager.hpp"
+
+// Static member initialization
+FlightManager* FlightManager::instance = nullptr;
+
+// ==================== Constructor & Singleton ====================
+
+FlightManager::FlightManager()
+{
+	db = std::make_unique<Database>("Flight");
+	ui = UserInterface::getInstance();
+	creator = std::make_unique<FlightCreator>();
+}
+
+FlightManager* FlightManager::getInstance()
+{
+	if (instance == nullptr)
+	{
+		instance = new FlightManager();
+	}
+	return instance;
+}
+
+FlightManager::~FlightManager() noexcept {}
+
+// ==================== Menu Methods ====================
+
+void FlightManager::manageFlights()
+{
+	while (true)
+	{
+		ui->clearScreen();
+		
+		vector<string> options = {
+			"Add New Flight",
+			"View All Flights",
+			"Update Flight",
+			"Remove Flight",
+			"Search Flights",
+			"Back to Main Menu"
+		};
+		
+		ui->displayMenu("Manage Flights", options);
+		
+		try
+		{
+			int choice = ui->getChoice("Enter choice: ", 1, 6);
+			
+			switch (choice)
+			{
+				case 1:
+					addFlight();
+					break;
+				case 2:
+					viewAllFlights();
+					break;
+				case 3:
+					updateFlight();
+					break;
+				case 4:
+					removeFlight();
+					break;
+				case 5:
+					searchFlights();
+					break;
+				case 6:
+					return;
+				default:
+					ui->printError("Invalid choice.");
+					ui->pauseScreen();
+					break;
+			}
+		}
+		catch (const UIException& e)
+		{
+			ui->printError(e.what());
+			ui->pauseScreen();
+		}
+	}
+}
+
+void FlightManager::addFlight()
+{
+	ui->clearScreen();
+	ui->printHeader("Add New Flight");
+	
+	try
+	{
+		shared_ptr<Flight> newFlight = creator->createNewFlight();
+		
+		if (!newFlight)
+		{
+			return;
+		}
+		
+		// Check if flight already exists
+		if (db->entryExists(newFlight->getFlightNumber()))
+		{
+			ui->printError("Flight " + newFlight->getFlightNumber() + " already exists.");
+			ui->pauseScreen();
+			return;
+		}
+		
+		// Save to database
+		saveFlightToDatabase(newFlight);
+		ui->printSuccess("Flight " + newFlight->getFlightNumber() + " has been successfully added.");
+	}
+	catch (const FlightException& e)
+	{
+		ui->printError(e.what());
+	}
+	catch (const std::exception& e)
+	{
+		ui->printError("Error: " + string(e.what()));
+	}
+	
+	ui->pauseScreen();
+}
+
+void FlightManager::viewAllFlights()
+{
+	ui->clearScreen();
+	ui->printHeader("View All Flights");
+	
+	try
+	{
+		json allFlightsData = db->loadAll();
+		
+		if (allFlightsData.empty())
+		{
+			ui->printWarning("No flights found in the system.");
+			ui->pauseScreen();
+			return;
+		}
+		
+		vector<shared_ptr<Flight>> flights;
+		
+		for (const auto& [flightNum, flightData] : allFlightsData.items())
+		{
+			try
+			{
+				flights.push_back(creator->createFromJson(flightData));
+			}
+			catch (const std::exception& e)
+			{
+				// Skip flights with errors
+				continue;
+			}
+		}
+		
+		displayFlightsTable(flights, "All Flights");
+		ui->println("\nTotal Flights: " + std::to_string(flights.size()));
+	}
+	catch (const std::exception& e)
+	{
+		ui->printError("Error retrieving flights: " + string(e.what()));
+	}
+	
+	ui->pauseScreen();
+}
+
+void FlightManager::updateFlight()
+{
+	ui->clearScreen();
+	ui->printHeader("Update Flight");
+	
+	try
+	{
+		string flightNumber = ui->getString("Enter Flight Number to Update: ");
+		
+		shared_ptr<Flight> flight = loadFlightFromDatabase(flightNumber);
+		if (!flight)
+		{
+			ui->printError("Flight not found.");
+			ui->pauseScreen();
+			return;
+		}
+		
+		vector<string> options = {
+			"Flight Details",
+			"Status",
+			"Price",
+			"Back to Manage Flights"
+		};
+		
+		ui->displayMenu("Update Flight", options);
+		
+		try
+		{
+			int choice = ui->getChoice("Enter choice: ", 1, 4);
+			
+			switch (choice)
+			{
+				case 1:
+					updateFlightDetails(flight);
+					break;
+				case 2:
+				{
+					string newStatus = selectFlightStatus();
+					flight->setStatus(newStatus);
+					ui->printSuccess("Flight status updated successfully.");
+					saveFlightToDatabase(flight);
+					break;
+				}
+				case 3:
+				{
+					try
+					{
+						double newPrice = ui->getDouble("Enter new Price: ");
+						if (newPrice > 0)
+						{
+							flight->setPrice(newPrice);
+							ui->printSuccess("Flight price updated successfully.");
+							saveFlightToDatabase(flight);
+						}
+						else
+						{
+							ui->printError("Price must be positive.");
+						}
+					}
+					catch (const UIException& e)
+					{
+						ui->printError(e.what());
+					}
+					break;
+				}
+				case 4:
+					ui->println("Returning to Manage Flights menu.");
+					ui->pauseScreen();
+					return;
+				default:
+					ui->printError("Invalid choice.");
+					break;
+			}
+		}
+		catch (const UIException& e)
+		{
+			ui->printError(e.what());
+		}
+	}
+	catch (const std::exception& e)
+	{
+		ui->printError("Error: " + string(e.what()));
+	}
+	
+	ui->pauseScreen();
+}
+
+void FlightManager::removeFlight()
+{
+	ui->clearScreen();
+	ui->printHeader("Remove Flight");
+	
+	try
+	{
+		string flightNumber = ui->getString("Enter Flight Number to Remove: ");
+		
+		if (!db->entryExists(flightNumber))
+		{
+			ui->printError("Flight not found.");
+			ui->pauseScreen();
+			return;
+		}
+		
+		// Check for active reservations (when Reservation system is implemented)
+		// if (hasActiveReservations(flightNumber)) {
+		//     ui->printError("Cannot delete flight with active reservations.");
+		//     ui->pauseScreen();
+		//     return;
+		// }
+		
+		try
+		{
+			bool confirm = ui->getYesNo("Are you sure you want to remove flight '" + flightNumber + "'?");
+			if (confirm)
+			{
+				deleteFlightFromDatabase(flightNumber);
+				ui->printSuccess("Flight '" + flightNumber + "' has been removed successfully.");
+			}
+			else
+			{
+				ui->printWarning("Flight removal canceled.");
+			}
+		}
+		catch (const UIException& e)
+		{
+			ui->printError(e.what());
+		}
+	}
+	catch (const std::exception& e)
+	{
+		ui->printError("Error: " + string(e.what()));
+	}
+	
+	ui->pauseScreen();
+}
+
+void FlightManager::searchFlights()
+{
+	ui->clearScreen();
+	ui->printHeader("Search Flights");
+	
+	try
+	{
+		string origin = ui->getString("Enter Origin: ");
+		string destination = ui->getString("Enter Destination: ");
+		string departureDate = ui->getDate("Enter Departure Date: ", "YYYY-MM-DD");
+		
+		vector<shared_ptr<Flight>> results = searchFlightsByRoute(origin, destination, departureDate);
+		
+		if (results.empty())
+		{
+			ui->printWarning("No flights found matching your search criteria.");
+		}
+		else
+		{
+			displayFlightsTable(results, "Search Results");
+		}
+	}
+	catch (const UIException& e)
+	{
+		ui->printError(e.what());
+	}
+	catch (const std::exception& e)
+	{
+		ui->printError("Error: " + string(e.what()));
+	}
+	
+	ui->pauseScreen();
+}
+
+// ==================== Helper Methods ====================
+
+shared_ptr<Flight> FlightManager::loadFlightFromDatabase(const string& flightNumber)
+{
+	if (!db->entryExists(flightNumber))
+	{
+		return nullptr;
+	}
+	
+	try
+	{
+		json flightData = db->getEntry(flightNumber);
+		return creator->createFromJson(flightData);
+	}
+	catch (const std::exception& e)
+	{
+		ui->printError("Error loading flight: " + string(e.what()));
+		return nullptr;
+	}
+}
+
+void FlightManager::saveFlightToDatabase(const shared_ptr<Flight>& flight)
+{
+	if (!flight)
+	{
+		throw FlightException(FlightErrorCode::DATABASE_ERROR, "Cannot save null flight.");
+	}
+	
+	try
+	{
+		json flightData = creator->toJson(flight);
+		if (db->entryExists(flight->getFlightNumber()))
+		{
+			db->updateEntry(flight->getFlightNumber(), flightData);
+		}
+		else
+		{
+			db->addEntry(flight->getFlightNumber(), flightData);
+		}
+	}
+	catch (const DatabaseException& e)
+	{
+		throw FlightException(FlightErrorCode::DATABASE_ERROR, e.what());
+	}
+}
+
+void FlightManager::deleteFlightFromDatabase(const string& flightNumber)
+{
+	try
+	{
+		db->deleteEntry(flightNumber);
+	}
+	catch (const DatabaseException& e)
+	{
+		throw FlightException(FlightErrorCode::DATABASE_ERROR, e.what());
+	}
+}
+
+void FlightManager::updateFlightDetails(const shared_ptr<Flight>& flight)
+{
+	ui->clearScreen();
+	ui->printHeader("Update Flight Details");
+	
+	ui->println("Current Flight Information:");
+	ui->println("1. Origin: " + flight->getOrigin());
+	ui->println("2. Destination: " + flight->getDestination());
+	ui->println("3. Departure: " + flight->getDepartureDateTime());
+	ui->println("4. Arrival: " + flight->getArrivalDateTime());
+	ui->println("5. Aircraft Type: " + flight->getAircraftType());
+	ui->println("6. Back to Previous Menu\n");
+	
+	try
+	{
+		int choice = ui->getChoice("Select field to update (1-6): ", 1, 6);
+		
+		if (choice == 6)
+		{
+			ui->printWarning("Returning to previous menu.");
+			return;
+		}
+		
+		// Note: For simplicity, not implementing full update logic here
+		// Real implementation would need to handle origin/destination validation
+		// and aircraft type changes with seat validation
+		ui->printWarning("Update functionality not fully implemented yet.");
+	}
+	catch (const UIException& e)
+	{
+		ui->printError(e.what());
+	}
+}
+
+string FlightManager::selectFlightStatus()
+{
+	vector<string> statusOptions = {
+		"Scheduled",
+		"Delayed",
+		"Boarding",
+		"Departed",
+		"Arrived",
+		"Canceled"
+	};
+	
+	ui->displayMenu("Select Flight Status", statusOptions);
+	
+	try
+	{
+		int choice = ui->getChoice("Enter status: ", 1, static_cast<int>(statusOptions.size()));
+		return statusOptions[choice - 1];
+	}
+	catch (const UIException& e)
+	{
+		ui->printError(e.what());
+		return "Scheduled";
+	}
+}
+
+void FlightManager::displayFlightsTable(const vector<shared_ptr<Flight>>& flights, const string& title)
+{
+	if (flights.empty())
+	{
+		ui->printWarning("No flights to display.");
+		return;
+	}
+	
+	vector<string> headers = {
+		"Flight Number", "Origin", "Destination", "Departure", "Status", "Total Seats", "Available", "Price"
+	};
+	
+	vector<vector<string>> rows;
+	
+	for (const auto& flight : flights)
+	{
+		if (flight)
+		{
+			try
+			{
+				rows.push_back({
+					flight->getFlightNumber(),
+					flight->getOrigin(),
+					flight->getDestination(),
+					flight->getDepartureDateTime(),
+					flight->getStatus(),
+					std::to_string(flight->getTotalSeats()),
+					std::to_string(flight->getAvailableSeats()),
+					ui->formatCurrency(flight->getPrice())
+				});
+			}
+			catch (const std::exception& e)
+			{
+				// Skip flights with display errors
+				continue;
+			}
+		}
+	}
+	
+	if (rows.empty())
+	{
+		ui->printWarning("No valid flights to display.");
+		return;
+	}
+	
+	if (!title.empty())
+	{
+		ui->println("\n" + title);
+		ui->printSeparator();
+	}
+	
+	ui->displayTable(headers, rows);
+}
+
+// ==================== Query Methods ====================
+
+shared_ptr<Flight> FlightManager::getFlight(const string& flightNumber)
+{
+	return loadFlightFromDatabase(flightNumber);
+}
+
+vector<shared_ptr<Flight>> FlightManager::searchFlightsByRoute(const string& origin, const string& destination, const string& departureDate)
+{
+	vector<shared_ptr<Flight>> results;
+	
+	try
+	{
+		json allFlightsData = db->loadAll();
+		
+		// Convert input to lowercase for case-insensitive comparison
+		auto toLower = [](const string& str) {
+			string result = str;
+			std::transform(result.begin(), result.end(), result.begin(),
+						[](unsigned char c) { return std::tolower(c); });
+			return result;
+		};
+		
+		string originLower = toLower(origin);
+		string destLower = toLower(destination);
+		
+		for (const auto& [flightNum, flightData] : allFlightsData.items())
+		{
+			try
+			{
+				shared_ptr<Flight> flight = creator->createFromJson(flightData);
+				
+				string flightOrigin = toLower(flight->getOrigin());
+				string flightDest = toLower(flight->getDestination());
+				string flightDate = flight->getDepartureDateTime().substr(0, 10);
+				
+				if (flightOrigin.find(originLower) != string::npos &&
+					flightDest.find(destLower) != string::npos &&
+					flightDate == departureDate)
+				{
+					results.push_back(flight);
+				}
+			}
+			catch (const std::exception& e)
+			{
+				// Skip flights with errors
+				continue;
+			}
+		}
+	}
+	catch (const std::exception& e)
+	{
+		ui->printError("Search error: " + string(e.what()));
+	}
+	
+	return results;
+}
+
+vector<string> FlightManager::getAllFlightNumbers()
+{
+	vector<string> flightNumbers;
+	
+	try
+	{
+		json allFlightsData = db->loadAll();
+		for (const auto& [flightNum, flightData] : allFlightsData.items())
+		{
+			flightNumbers.push_back(flightNum);
+		}
+	}
+	catch (const std::exception& e)
+	{
+		ui->printError("Error retrieving flight numbers: " + string(e.what()));
+	}
+	
+	return flightNumbers;
+}
+
+bool FlightManager::flightExists(const string& flightNumber)
+{
+	try
+	{
+		return db->entryExists(flightNumber);
+	}
+	catch (const std::exception& e)
+	{
+		return false;
+	}
+}
+
+bool FlightManager::hasActiveReservations(const string& flightNumber)
+{
+	// TODO: Implement when Reservation system is created
+	// This will check if a flight has any active reservations
+	return false;
+}
