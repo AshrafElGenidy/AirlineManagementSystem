@@ -3,23 +3,16 @@
 
 #include <string>
 #include <exception>
-#include <optional>
 #include <memory>
 #include "json.hpp"
-#include "UserInterface.hpp"
-#include "Database.hpp"
 
 using std::string;
 using nlohmann::json;
 
-static constexpr int MIN_USERNAME_LENGTH = 3;
-static constexpr int MAX_USERNAME_LENGTH = 20;
-static constexpr int MIN_PASSWORD_LENGTH = 8;
-static constexpr int MAX_PASSWORD_LENGTH = 30;
-
 // ==================== User Class ====================
 
-enum class UserRole {
+enum class UserRole 
+{
 	ADMINISTRATOR,
 	BOOKING_AGENT,
 	PASSENGER
@@ -29,75 +22,35 @@ class User
 {
 protected:
 	string username;
+	string name;
+	string email;
+	string phoneNumber;
+	UserRole role;
 	
-	// Static data members
-	static UserInterface* ui;
-	static std::unique_ptr<Database> db;
-		
-	// Helpers
-	static string hashPassword(const string& password);
-	static std::unique_ptr<User> createUserObject(const string& username);
+	// Private constructor - only UsersManager can create
+	User(const string& username, const string& name, const string& email,
+	     const string& phoneNumber, UserRole role);
 	
-	// Validation methods
-	static bool validateUsername(const string& username);
-	static bool validatePassword(const string& password);
-	bool verifyPassword(const string& password);
-
-	// Constructors
-	User(const string& username, const string& password, UserRole role);	// For new Users
-	explicit User(const string& username);									// for existing users
+	friend class UsersManager;
 	
 public:
-	// Static system initialization
-	static void initializeUserSystem();
-	
-	// Authentication methods
-	[[nodiscard]] static std::unique_ptr<User> login(const string& username, const string& password);
-	void logout() noexcept;
-	
-	// Operational methods
-	virtual void displayMenu() = 0;
-	virtual void handleMenuChoice(int choice) = 0;
-	
-	// Setters
-	void setName(const string& name);
-	void setEmail(const string& email);
-	void setPhoneNumber(const string& phoneNumber);
-
 	// Getters
 	string getUsername() const noexcept;
-	string getName() const;
-	UserRole getRole() const;
-	string getEmail() const;
-	string getPhoneNumber() const;
+	string getName() const noexcept;
+	string getEmail() const noexcept;
+	string getPhoneNumber() const noexcept;
+	UserRole getRole() const noexcept;
+	virtual string getRoleString() const noexcept = 0;
+	
+	// Setters
+	void setName(const string& name) noexcept;
+	void setEmail(const string& email) noexcept;
+	void setPhoneNumber(const string& phoneNumber) noexcept;
 	
 	virtual ~User() noexcept = default;
-};
-
-// ==================== UserException Class ====================
-
-enum class UserErrorCode
-{
-	USERNAME_TAKEN,
-	INVALID_USERNAME,
-	INVALID_PASSWORD,
-	USER_NOT_FOUND,
-	INCORRECT_PASSWORD,
-	DATABASE_ERROR,
-	INVALID_INPUTS
-};
-
-class UserException : public std::exception
-{
-private:
-	UserErrorCode errorCode;
-	string getErrorMessage() const noexcept;
-
-public:
-	UserException(UserErrorCode code);
-	const char* what() const noexcept override;
-	virtual ~UserException() noexcept = default;
-	UserErrorCode getErrorCode() const noexcept;
+	
+	// Main menu loop
+	virtual void userMenu() = 0;
 };
 
 #endif // USER_HPP

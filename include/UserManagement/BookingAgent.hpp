@@ -1,27 +1,28 @@
-#ifndef BOOKING_AGENT_HPP
-#define BOOKING_AGENT_HPP
+#ifndef BOOKINGAGENT_HPP
+#define BOOKINGAGENT_HPP
 
 #include "User.hpp"
+#include <string>
 
-class BookingAgent : public User {
+using std::string;
+
+// Forward declarations
+class FlightManager;
+
+class BookingAgent : public User
+{
 private:
-    std::string agentId;
-    double commissionRate;
-    int totalBookings;
-
-    BookingAgent(const std::string& username, const std::string& password);
-public:
-    
-    void displayMenu() override;
-    void handleMenuChoice(int choice) override;
-    
-    void searchFlightsMenu();
-    void bookFlightMenu();
-    void modifyReservationMenu();
-    void cancelReservationMenu();
-    bool processRefund(const std::string& reservationId, double amount);
+	FlightManager* flightManager;
 	
-	friend class User;
+	// Constructors
+	BookingAgent(const string& username, const string& name, const string& email,
+	     const string& phoneNumber, UserRole role);
+	
+public:
+	void userMenu() override;
+	virtual string getRoleString() const noexcept;
+	
+	friend class UsersManager;
 };
 
-#endif // BOOKING_AGENT_HPP
+#endif // BOOKINGAGENT_HPP

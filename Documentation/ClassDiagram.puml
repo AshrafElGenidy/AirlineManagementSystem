@@ -1,4 +1,4 @@
-@startuml Airline_Management_System_Revised
+@startuml Airline_Management_System
 
 ' ==================== Styling Configuration ====================
 skinparam classAttributeIconSize 0
@@ -146,35 +146,41 @@ package "User Management" {
     INVALID_INPUTS
   }
 
-  abstract class User <<Abstract>> {
-    + {static} initializeUserSystem(): void
-    + {static} login(username: string, password: string): unique_ptr<User>
-    + {abstract} displayMenu(): void
-    + {abstract} handleMenuChoice(choice: int): void
-    + logout(): void
+  abstract class User <<Abstract>> <<Entity>> {
     + getUsername(): string
     + getName(): string
-    + getRole(): UserRole
     + getEmail(): string
     + getPhoneNumber(): string
+    + getRole(): UserRole
+    + {abstract} getRoleString(): string
     + setName(name: string): void
     + setEmail(email: string): void
     + setPhoneNumber(phoneNumber: string): void
+    + {abstract} userMenu(): void
   }
 
   class Administrator {
-    + displayMenu(): void
-    + handleMenuChoice(choice: int): void
+    + userMenu(): void
+    + getRoleString(): string
   }
 
   class BookingAgent {
-    + displayMenu(): void
-    + handleMenuChoice(choice: int): void
+    + userMenu(): void
+    + getRoleString(): string
   }
 
   class Passenger {
-    + displayMenu(): void
-    + handleMenuChoice(choice: int): void
+    + userMenu(): void
+    + getRoleString(): string
+  }
+
+  class UsersManager <<Singleton>> <<Controller>> {
+    + {static} getInstance(): UsersManager*
+    + login(username: string, password: string): shared_ptr<User>
+    + manageUsers(): void
+    + getUser(username: string): shared_ptr<User>
+    + getAllUsernames(): vector<string>
+    + userExists(username: string): bool
   }
 
   class UserException <<Exception>> {
@@ -187,10 +193,14 @@ package "User Management" {
   User <|-- BookingAgent
   User <|-- Passenger
   User --> UserRole
-  User ..> UserException : throws
-  User --> Database : uses
-  User --> UserInterface : uses
+  UsersManager ..> User : creates/manages
+  UsersManager --> Database : uses
+  UsersManager --> UserInterface : uses
+  UsersManager ..> UserException : throws
   UserException --> UserErrorCode
+  Administrator ..|> UsersManager : friend
+  BookingAgent ..|> UsersManager : friend
+  Passenger ..|> UsersManager : friend
 }
 
 ' ==================== Seat Map Management ====================
@@ -305,6 +315,7 @@ package "Aircraft Management" {
   }
   
   class AircraftCreator <<Builder>> {
+    + AircraftCreator()
     + createNewAircraft(): shared_ptr<Aircraft>
     + createFromJson(data: json): shared_ptr<Aircraft>
     + toJson(aircraft: shared_ptr<Aircraft>): json
@@ -327,6 +338,9 @@ package "Aircraft Management" {
   AircraftCreator --> AircraftValidator : uses
   AircraftCreator ..> Aircraft : creates
   AircraftCreator ..> AircraftValidationException : throws
+  AircraftCreator ..|> AircraftManager : friend
+  Aircraft ..|> AircraftManager : friend
+  Aircraft ..|> AircraftCreator : friend
   AircraftManager --> Database : uses
   AircraftManager --> UserInterface : uses
   AircraftManager --> AircraftCreator : uses
@@ -409,6 +423,7 @@ package "Flight Management" {
   }
   
   class FlightCreator <<Builder>> {
+    + FlightCreator()
     + createNewFlight(): shared_ptr<Flight>
     + createFromJson(data: json): shared_ptr<Flight>
     + toJson(flight: shared_ptr<Flight>): json
@@ -432,12 +447,15 @@ package "Flight Management" {
   FlightCreator --> FlightValidator : uses
   FlightCreator ..> Flight : creates
   FlightCreator ..> FlightValidationException : throws
-  FlightCreator ..> AircraftManager : queries
+  FlightCreator --> AircraftManager : queries
+  FlightCreator ..|> FlightManager : friend
+  Flight ..|> FlightManager : friend
+  Flight ..|> FlightCreator : friend
   FlightManager --> Database : uses
   FlightManager --> UserInterface : uses
   FlightManager --> FlightCreator : uses
   FlightManager ..> Flight : manages
-  FlightManager ..> AircraftManager : queries
+  FlightManager --> AircraftManager : queries
   FlightManager ..> SeatMap : uses
   FlightManager ..> FlightException : throws
 }
@@ -464,7 +482,6 @@ package "Crew Management" {
   }
   
   CrewMember --> CrewRole
-}
 
 ' ==================== Booking System ====================
 
@@ -553,100 +570,92 @@ package "Reporting" {
 
 ' ==================== Cross-Package Relationships ====================
 
-' System orchestrates major components
-AirlineManagementSystem --> AircraftManager : delegates to
-AirlineManagementSystem --> ReportGenerator : delegates to
-
-' User classes interact with managers
-Administrator --> AirlineManagementSystem : uses
+Administrator --> UsersManager : uses
 Administrator --> FlightManager : uses
 Administrator --> AircraftManager : uses
 BookingAgent --> FlightManager : uses
 Passenger --> FlightManager : uses
 
-' Manager relationships
-AircraftManager ..> FlightManager : checks usage
-FlightManager ..> AircraftManager : queries aircraft
-
-' Data flow relationships
 Reservation --> FlightManager : queries
 Reservation --> Payment : has
 BoardingPass --> Reservation : generated from
 CrewMember ..> FlightManager : assigned to
 
-note top of AirlineManagementSystem
-  **Singleton Pattern - Central Orchestrator**
-  - Handles system initialization
-  - Manages main program loop
-  - Delegates to domain-specific managers
-  - Does NOT store domain data
+note top of Database
+  **Caching Strategy**
+  - Constructor: Database("EntityName")
+  - Path: "Databases/EntityName.json"
+  - Loads entire JSON into cache
+  - Writes to file on every change
+  - Ensures consistency on crash
 end note
 
 note right of SeatMap
-  **Pure Business Logic Class**
+  **Pure Business Logic**
   - NO database or UI dependencies
-  - Validates seat layouts and numbers
-  - Manages seat reservations in memory
+  - Validates seat layouts: "3-3-3"
+  - Manages reservations in memory
   - Returns display data structures
-  - Used by Aircraft and Flight managers
+  - Used by Aircraft and Flight
 end note
 
 note right of FlightManager
-  **Manager Pattern - Flight Domain**
-  Database: Flights.json
-  - Manages all flight operations
-  - Uses FlightCreator for validation/creation
-  - Queries AircraftManager for aircraft data
-  - Creates SeatMap instances with reservations
-  - Handles business logic and menus
+  **Manager Pattern**
+  Database: "Flights"
+  - Uses FlightCreator for construction
+  - Queries AircraftManager
+  - Creates SeatMap instances
+  - Handles business logic
 end note
 
 note right of AircraftManager
-  **Manager Pattern - Aircraft Domain**
-  Database: Aircrafts.json
-  - Manages all aircraft type operations
-  - Uses AircraftCreator for validation/creation
-  - Checks flight usage before deletion
-  - Handles business logic and menus
-  - Stores aircraft TYPE specifications only
+  **Manager Pattern**
+  Database: "Aircrafts"
+  - Uses AircraftCreator
+  - Checks flight usage
+  - Handles business logic
+  - Manages aircraft types
+end note
+
+note right of UsersManager
+  **Manager Pattern**
+  Database: "Users"
+  - Handles authentication
+  - Password hashing
+  - First-time setup
+  - Creates polymorphic Users
 end note
 
 note left of FlightCreator
   **Builder Pattern**
-  - Encapsulates Flight construction
-  - Validates all input fields
-  - Prompts user for data via UI
-  - Handles JSON serialization/deserialization
-  - Friend of Flight and FlightManager
+  - Validates via FlightValidator
+  - Prompts user through UI
+  - JSON serialization
+  - Friend of Flight/Manager
 end note
 
 note left of AircraftCreator
   **Builder Pattern**
-  - Encapsulates Aircraft construction
-  - Validates all input fields
-  - Prompts user for data via UI
-  - Handles JSON serialization/deserialization
-  - Friend of Aircraft and AircraftManager
-end note
-
-note left of Database
-  **Caching Strategy**
-  - Loads entire JSON on construction
-  - Keeps unique_ptr<json> in memory
-  - All reads from cached data
-  - Writes to file on every change
-  - Ensures file consistency on crash
-  - Manages "Databases/" path prefix
+  - Validates via AircraftValidator
+  - Prompts user through UI
+  - JSON serialization
+  - Friend of Aircraft/Manager
 end note
 
 note bottom of User
-  **User Management**
-  Database: Users.json
-  - Username as primary key
-  - Role-based polymorphism
-  - Password hashing for security
-  - First-time setup creates admin
-  - Static database initialization
+  **Polymorphic Design**
+  - Abstract base class
+  - Role-based inheritance
+  - Pure virtual userMenu()
+  - Friend of UsersManager
+end note
+
+note top of AirlineManagementSystem
+  **System Orchestrator**
+  - Handles initialization
+  - Manages main loop
+  - Coordinates login
+  - Does NOT store domain data
 end note
 
 @enduml

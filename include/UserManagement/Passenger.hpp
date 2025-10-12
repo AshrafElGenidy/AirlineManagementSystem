@@ -2,44 +2,27 @@
 #define PASSENGER_HPP
 
 #include "User.hpp"
-#include <vector>
 #include <string>
 
+using std::string;
 
-class PassengerPreferences {
-public:
-    std::string seatPreference;
-    std::string mealPreference;
-    std::string specialRequests;
-};
+// Forward declarations
+class FlightManager;
 
-class Reservation;
-
-class Passenger : public User {
+class Passenger : public User
+{
 private:
-    std::string passengerId;
-    std::string dateOfBirth;
-    std::string passportNumber;
-    std::string nationality;
-    std::vector<Reservation*> travelHistory;
-    int loyaltyPoints;
-    PassengerPreferences preferences;
-
-    Passenger(const std::string& username, const std::string& password);
-
-public:
-    
-    void displayMenu() override;
-    void handleMenuChoice(int choice) override;
-    
-    void searchFlightsMenu();
-    Reservation* bookFlightFromSearch(const std::string& flightNumber);
-    void viewMyReservationsMenu();
-    void checkInMenu();
-    void earnLoyaltyPoints(int points);
-    double redeemLoyaltyPoints(int points);
+	FlightManager* flightManager;
 	
-	friend class User;
+	// Constructors
+	Passenger(const string& username, const string& name, const string& email,
+	     const string& phoneNumber, UserRole role);
+	
+public:
+	void userMenu() override;
+	virtual string getRoleString() const noexcept;
+	
+	friend class UsersManager;
 };
 
 #endif // PASSENGER_HPP
