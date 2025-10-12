@@ -1,184 +1,195 @@
 #include "AirlineManagementSystem.hpp"
+#include <iostream>
 
-// Singleton instance
+// ==================== Static Member Initialization ====================
+
 AirlineManagementSystem* AirlineManagementSystem::instance = nullptr;
 
-// Private Constructor
-AirlineManagementSystem::AirlineManagementSystem()
-{
-}
+// ==================== Singleton ====================
 
-// Get singleton instance
 AirlineManagementSystem* AirlineManagementSystem::getInstance()
 {
+	if (instance == nullptr)
+	{
+		instance = new AirlineManagementSystem();
+	}
+	return instance;
 }
 
-// ==================== System Initialization ====================
+// ==================== Constructor ====================
 
-// Initialize system, load data from files
-void AirlineManagementSystem::initialize()
+AirlineManagementSystem::AirlineManagementSystem()
 {
+	ui = UserInterface::getInstance();
+	currentUser = nullptr;
+
+	ui->clearScreen();
+	displayWelcomeBanner();
+	
+	ui->println("Initializing Airline Management System...");
+	
+	try
+	{
+		usersManager = UsersManager::getInstance();
+		
+		ui->printSuccess("System initialized successfully!");
+	}
+	catch (const std::exception& e)
+	{
+		ui->printError("Initialization failed: " + string(e.what()));
+		ui->println("The system may not function correctly.");
+	}
 }
 
-// Start main program loop
-void AirlineManagementSystem::start()
+// ==================== System Lifecycle ====================
+
+void AirlineManagementSystem::runSystem()
 {
+	bool running = true;
+	
+	while (running)
+	{
+		ui->clearScreen();
+		displayWelcomeBanner();
+		
+		vector<string> options = {
+			"Login",
+			"Exit System"
+		};
+		
+		ui->displayMenu("Main Menu", options);
+		
+		try
+		{
+			int choice = ui->getChoice("Enter choice: ", 1, 2);
+			
+			switch (choice)
+			{
+				case 1:
+					handleLogin();
+					break;
+				case 2:
+					ui->println("\nThank you for using the Airline Management System.");
+					ui->println("Goodbye!");
+					running = false;
+					break;
+				default:
+					ui->printError("Invalid choice.");
+					ui->pauseScreen();
+					break;
+			}
+		}
+		catch (const UIException& e)
+		{
+			ui->printError(string(e.what()));
+			ui->pauseScreen();
+		}
+		catch (const std::exception& e)
+		{
+			ui->printError("An unexpected error occurred: " + string(e.what()));
+			ui->pauseScreen();
+		}
+	}
 }
 
-// Display welcome screen
-void AirlineManagementSystem::displayWelcome()
-{
-}
-
-// Prompt user to select role
-int AirlineManagementSystem::selectRole()
-{
-}
-
-// ==================== Authentication ====================
-
-// Login user with selected role
-User* AirlineManagementSystem::login(UserRole role)
-{
-}
-
-// Logout current user
-void AirlineManagementSystem::logout()
-{
-}
-
-// Authenticate user credentials
-User* AirlineManagementSystem::authenticateUser(const std::string& username, 
-                                                const std::string& password, UserRole role)
-{
-}
-
-// ==================== Flight Management ====================
-
-// Add new flight to system
-bool AirlineManagementSystem::addFlight(Flight* flight)
-{
-}
-
-// Remove flight by flight number
-bool AirlineManagementSystem::removeFlight(const std::string& flightNumber)
-{
-}
-
-// Update existing flight details
-bool AirlineManagementSystem::updateFlight(const std::string& flightNumber)
-{
-}
-
-// Get flight by flight number
-Flight* AirlineManagementSystem::getFlight(const std::string& flightNumber)
-{
-}
-
-// Get all flights in system
-std::vector<Flight*> AirlineManagementSystem::getAllFlights()
-{
-}
-
-// Search flights by criteria (origin, destination, date)
-std::vector<Flight*> AirlineManagementSystem::searchFlights(const SearchCriteria& criteria)
-{
-}
-
-// ==================== User Management ====================
-
-// Add new user to system
-bool AirlineManagementSystem::addUser(User* user)
-{
-}
-
-// Remove user by user ID
-bool AirlineManagementSystem::removeUser(const std::string& userId)
-{
-}
-
-// Get user by user ID
-User* AirlineManagementSystem::getUser(const std::string& userId)
-{
-}
-
-// ==================== Reservation Management ====================
-
-// Create new reservation
-bool AirlineManagementSystem::createReservation(Reservation* reservation)
-{
-}
-
-// Get reservation by ID
-Reservation* AirlineManagementSystem::getReservation(const std::string& reservationId)
-{
-}
-
-// Cancel reservation and release seat
-bool AirlineManagementSystem::cancelReservation(const std::string& reservationId)
-{
-}
-
-// Get all reservations for a passenger
-std::vector<Reservation*> AirlineManagementSystem::getPassengerReservations(const std::string& passengerId)
-{
-}
-
-// ==================== Aircraft Management ====================
-
-// Add aircraft to fleet
-bool AirlineManagementSystem::addAircraft(Aircraft* aircraft)
-{
-}
-
-// Get aircraft by ID
-Aircraft* AirlineManagementSystem::getAircraft(const std::string& aircraftId)
-{
-}
-
-// Get all aircraft in fleet
-std::vector<Aircraft*> AirlineManagementSystem::getAllAircraft()
-{
-}
-
-// ==================== Crew Management ====================
-
-// Add crew member to system
-bool AirlineManagementSystem::addCrewMember(CrewMember* crew)
-{
-}
-
-// Get all pilots
-std::vector<Pilot*> AirlineManagementSystem::getPilots()
-{
-}
-
-// Get all flight attendants
-std::vector<FlightAttendant*> AirlineManagementSystem::getFlightAttendants()
-{
-}
-
-// Assign pilot and attendant to flight
-bool AirlineManagementSystem::assignCrewToFlight(const std::string& flightNumber, 
-                                                 const std::string& pilotId, 
-                                                 const std::string& attendantId)
-{
-}
-
-// ==================== Utility Functions ====================
-
-// Generate unique reservation ID
-std::string AirlineManagementSystem::generateReservationId()
-{
-}
-
-// Check if seat is available on flight
-bool AirlineManagementSystem::isSeatAvailable(const std::string& flightNumber, 
-                                              const std::string& seatNumber)
-{
-}
-
-// Shutdown system, save data, cleanup memory
 void AirlineManagementSystem::shutdown()
 {
+	ui->clearScreen();
+	ui->printHeader("SYSTEM SHUTDOWN");
+	ui->println("Shutting down Airline Management System...");
+	
+	// Clean up current user session
+	if (currentUser)
+	{
+		ui->println("Logging out current user...");
+		currentUser.reset();
+	}
+	
+	ui->printSuccess("System shutdown complete.");
+	ui->println("");
+}
+
+// ==================== Private Methods ====================
+
+void AirlineManagementSystem::displayWelcomeBanner()
+{
+	ui->println("");
+	ui->println("╔════════════════════════════════════════════════╗");
+	ui->println("║                                                ║");
+	ui->println("║           AIRLINE MANAGEMENT SYSTEM            ║");
+	ui->println("║                                                ║");
+	ui->println("║     Flight Management & Reservation System     ║");
+	ui->println("║                                                ║");
+	ui->println("╚════════════════════════════════════════════════╝");
+	ui->println("");
+}
+
+void AirlineManagementSystem::handleLogin()
+{
+	ui->clearScreen();
+	ui->printHeader("USER LOGIN");
+	
+	try
+	{
+		string username = ui->getString("Username: ");
+		string password = ui->getPassword("Password: ");
+		
+		// Attempt login
+		currentUser = usersManager->login(username, password);
+		
+		// Login successful - enter user session
+		ui->pauseScreen();
+		handleUserSession();
+		
+		// After user session ends (logout)
+		currentUser.reset();
+	}
+	catch (const UserException& e)
+	{
+		ui->printError(string(e.what()));
+		ui->pauseScreen();
+	}
+	catch (const UIException& e)
+	{
+		ui->printError(string(e.what()));
+		ui->pauseScreen();
+	}
+	catch (const std::exception& e)
+	{
+		ui->printError("Login error: " + string(e.what()));
+		ui->pauseScreen();
+	}
+}
+
+void AirlineManagementSystem::handleUserSession()
+{
+	if (!currentUser)
+	{
+		ui->printError("No user logged in.");
+		return;
+	}
+	
+	// Display welcome message
+	ui->clearScreen();
+	ui->printHeader("WELCOME");
+	ui->println("User: " + currentUser->getName());
+	ui->println("Role: " + currentUser->getRoleString());
+	ui->println("Username: " + currentUser->getUsername());
+	ui->pauseScreen();
+	
+	// Delegate to user's polymorphic menu
+	try
+	{
+		currentUser->userMenu();
+	}
+	catch (const std::exception& e)
+	{
+		ui->printError("Session error: " + string(e.what()));
+		ui->pauseScreen();
+	}
+	
+	// User has logged out
+	ui->clearScreen();
+	ui->printSuccess("You have been logged out successfully.");
+	ui->pauseScreen();
 }
