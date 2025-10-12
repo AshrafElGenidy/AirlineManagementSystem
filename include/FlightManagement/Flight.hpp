@@ -55,6 +55,11 @@ public:
 	vector<string> getReservedSeats() const noexcept;
 	
 	// Setters
+	void setOrigin(const string& origin) noexcept;
+	void setDestination(const string& destination) noexcept;
+	void setDepartureDateTime(const string& departureDateTime) noexcept;
+	void setArrivalDateTime(const string& arrivalDateTime) noexcept;
+	void setAircraftType(const string& aircraftType) noexcept;
 	void setStatus(const string& status) noexcept;
 	void setPrice(double price) noexcept;
 	void setGate(const string& gate) noexcept;

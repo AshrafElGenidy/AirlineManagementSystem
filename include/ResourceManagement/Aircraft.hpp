@@ -6,79 +6,54 @@
 #include <exception>
 #include <memory>
 #include "json.hpp"
-#include "UserInterface.hpp"
-#include "Database.hpp"
 
 using nlohmann::json;
 using std::string;
 using std::vector;
 
-static constexpr int MIN_AIRCRAFT_TYPE_LENGTH = 2;
-static constexpr int MAX_AIRCRAFT_TYPE_LENGTH = 30;
-static constexpr int MIN_SEATS = 50;
-static constexpr int MAX_SEATS = 500;
-
-// ==================== Aircraft Class ====================
+// ==================== Aircraft Class (Pure Data) ====================
 
 class Aircraft
 {
 private:
 	string aircraftType;
+	string manufacturer;
+	string model;
+	int totalSeats;
+	string seatLayout;
+	int rows;
+	int fleetCount;
+	string status;
 	
-	// Static data members
-	static UserInterface* ui;
-	static std::unique_ptr<Database> db;
+	// Private constructors - only AircraftManager and AircraftCreator can create
+	Aircraft(const string& aircraftType, const string& manufacturer, const string& model,
+	         int totalSeats, const string& seatLayout, int rows, int fleetCount,
+	         const string& status);
 	
-	// Helpers
-	static bool validateAircraftType(const string& aircraftType);
-	static string selectAircraftStatus();
-	
-	// Aircraft Management
-	static void addAircraft();
-	static void viewAllAircraft();
-	static void updateAircraft();
-	static void removeAircraft();
-	void updateAircraftDetails();
-	
-	// Constructors
-	Aircraft();										// For new aircraft types
+	friend class AircraftManager;
+	friend class AircraftCreator;
 	
 public:
-	// Constructors
-	explicit Aircraft(const string& aircraftType);	// For existing aircraft types
-	
-	// Static system initialization
-	static void initializeAircraftSystem();
-	
-	// Aircraft Management
-	static void manageAircraft();
-	
-	// Operational methods (for use by other classes)
-	static vector<string> getAllAircraftTypes();
-	static bool aircraftTypeExists(const string& aircraftType);
-	
 	// Getters
 	string getAircraftType() const noexcept;
-	string getManufacturer() const;
-	string getModel() const;
-	int getTotalSeats() const;
-	string getSeatLayout() const;
-	int getRows() const;
-	int getFleetCount() const;
-	string getStatus() const;
+	string getManufacturer() const noexcept;
+	string getModel() const noexcept;
+	int getTotalSeats() const noexcept;
+	string getSeatLayout() const noexcept;
+	int getRows() const noexcept;
+	int getFleetCount() const noexcept;
+	string getStatus() const noexcept;
 	
 	// Setters
-	void setManufacturer(const string& manufacturer);
-	void setModel(const string& model);
-	void setTotalSeats(int seats);
-	void setSeatLayout(const string& layout);
-	void setRows(int rows);
-	void setFleetCount(int count);
-	void setStatus(const string& status);
+	void setManufacturer(const string& manufacturer) noexcept;
+	void setModel(const string& model) noexcept;
+	void setTotalSeats(int totalSeats) noexcept;
+	void setSeatLayout(const string& seatLayout) noexcept;
+	void setRows(int rows) noexcept;
+	void setFleetCount(int fleetCount) noexcept;
+	void setStatus(const string& status) noexcept;
 	
-	// Utility
-	void displayAircraftInfo() const;
-	
+	// Destructor
 	virtual ~Aircraft() noexcept = default;
 };
 
@@ -90,7 +65,10 @@ enum class AircraftErrorCode
 	AIRCRAFT_EXISTS,
 	INVALID_AIRCRAFT_TYPE,
 	INVALID_SEAT_LAYOUT,
-	INVALID_SEAT_NUMBER,
+	INVALID_SEAT_COUNT,
+	INVALID_MANUFACTURER,
+	INVALID_MODEL,
+	INVALID_FLEET_COUNT,
 	DATABASE_ERROR
 };
 
@@ -98,10 +76,12 @@ class AircraftException : public std::exception
 {
 private:
 	AircraftErrorCode errorCode;
+	string message;
 	string getErrorMessage() const noexcept;
 
 public:
 	AircraftException(AircraftErrorCode code);
+	AircraftException(AircraftErrorCode code, const string& customMessage);
 	const char* what() const noexcept override;
 	virtual ~AircraftException() noexcept = default;
 	AircraftErrorCode getErrorCode() const noexcept;

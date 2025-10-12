@@ -82,6 +82,8 @@ public:
 	
 	// Destructor
 	~FlightCreator() noexcept = default;
+	
+	friend class FlightManager;	 // For FlightManager to use getValid methods
 };
 
 #endif // FLIGHTCREATOR_HPP

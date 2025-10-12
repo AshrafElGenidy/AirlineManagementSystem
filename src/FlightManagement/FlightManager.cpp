@@ -10,7 +10,7 @@ FlightManager* FlightManager::instance = nullptr;
 
 FlightManager::FlightManager()
 {
-	db = std::make_unique<Database>("Flight");
+	db = std::make_unique<Database>("Flights");
 	ui = UserInterface::getInstance();
 	creator = std::make_unique<FlightCreator>();
 }
@@ -401,27 +401,127 @@ void FlightManager::updateFlightDetails(const shared_ptr<Flight>& flight)
 	ui->println("3. Departure: " + flight->getDepartureDateTime());
 	ui->println("4. Arrival: " + flight->getArrivalDateTime());
 	ui->println("5. Aircraft Type: " + flight->getAircraftType());
-	ui->println("6. Back to Previous Menu\n");
+	ui->println("6. Gate: " + flight->getGate());
+	ui->println("7. Boarding Time: " + flight->getBoardingTime());
+	ui->println("8. Back to Previous Menu\n");
 	
 	try
 	{
-		int choice = ui->getChoice("Select field to update (1-6): ", 1, 6);
+		int choice = ui->getChoice("Select field to update (1-8): ", 1, 8);
 		
-		if (choice == 6)
+		switch (choice)
 		{
-			ui->printWarning("Returning to previous menu.");
-			return;
+			case 1:  // Update Origin
+			{
+				if (hasActiveReservations(flight->getFlightNumber()))
+				{
+					ui->printError("Cannot modify origin for flights with active reservations.");
+					break;
+				}
+				
+				string newOrigin = creator->getValidOrigin();
+				flight->setOrigin(newOrigin);
+				saveFlightToDatabase(flight);
+				ui->printSuccess("Origin updated successfully.");
+				break;
+			}
+			case 2:  // Update Destination
+			{
+				if (hasActiveReservations(flight->getFlightNumber()))
+				{
+					ui->printError("Cannot modify destination for flights with active reservations.");
+					break;
+				}
+				
+				string newDestination = creator->getValidDestination();
+				flight->setDestination(newDestination);
+				saveFlightToDatabase(flight);
+				ui->printSuccess("Destination updated successfully.");
+				break;
+			}
+			case 3:  // Update Departure DateTime
+			{
+				if (hasActiveReservations(flight->getFlightNumber()))
+				{
+					ui->printWarning("This flight has active reservations.");
+					bool confirm = ui->getYesNo("Continue with departure time update?");
+					if (!confirm)
+					{
+						ui->printWarning("Departure time update canceled.");
+						break;
+					}
+				}
+				
+				string newDeparture = creator->getValidDepartureDateTime();
+				flight->setDepartureDateTime(newDeparture);
+				saveFlightToDatabase(flight);
+				ui->printSuccess("Departure date and time updated successfully.");
+				break;
+			}
+			case 4:  // Update Arrival DateTime
+			{
+				string newArrival = creator->getValidArrivalDateTime();
+				flight->setArrivalDateTime(newArrival);
+				saveFlightToDatabase(flight);
+				ui->printSuccess("Arrival date and time updated successfully.");
+				break;
+			}
+			case 5:  // Update Aircraft Type
+			{
+				if (hasActiveReservations(flight->getFlightNumber()))
+				{
+					ui->printError("Cannot change aircraft type for flights with active reservations.");
+					ui->println("Reason: Seat reservations are tied to the current aircraft configuration.");
+					break;
+				}
+				
+				string newAircraftType = creator->getValidAircraftType();
+				flight->setAircraftType(newAircraftType);
+				saveFlightToDatabase(flight);
+				ui->printSuccess("Aircraft type updated successfully.");
+				break;
+			}
+			case 6:  // Update Gate
+			{
+				try
+				{
+					string newGate = ui->getString("Enter new Gate (e.g., A12, B5): ");
+					flight->setGate(newGate);
+					saveFlightToDatabase(flight);
+					ui->printSuccess("Gate updated successfully.");
+				}
+				catch (const UIException& e)
+				{
+					ui->printError(e.what());
+				}
+				break;
+			}
+			case 7:  // Update Boarding Time
+			{
+				string newBoardingTime = creator->getValidDepartureDateTime();
+				flight->setBoardingTime(newBoardingTime);
+				saveFlightToDatabase(flight);
+				ui->printSuccess("Boarding time updated successfully.");
+				break;
+			}
+			case 8:  // Back
+				ui->printWarning("Returning to previous menu.");
+				return;
+			default:
+				ui->printError("Invalid choice.");
+				break;
 		}
-		
-		// Note: For simplicity, not implementing full update logic here
-		// Real implementation would need to handle origin/destination validation
-		// and aircraft type changes with seat validation
-		ui->printWarning("Update functionality not fully implemented yet.");
 	}
 	catch (const UIException& e)
 	{
 		ui->printError(e.what());
 	}
+	catch (const FlightValidationException& e)
+	{
+		ui->printError(e.what());
+	}
+	
+	ui->pauseScreen();
 }
 
 string FlightManager::selectFlightStatus()

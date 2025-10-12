@@ -1,421 +1,14 @@
-#include <iostream>
-#include <fstream>
-#include <sstream>
-#include <algorithm>
-#include <cctype>
-#include <iomanip>
 #include "Aircraft.hpp"
-#include "SeatMap.hpp"
 
 // ==================== Aircraft Class ====================
 
-// Static member initialization
-UserInterface* Aircraft::ui = nullptr;
-std::unique_ptr<Database> Aircraft::db = nullptr;
-
-// ==================== Constructors ====================
-
-Aircraft::Aircraft()
-{
-	string aircraftType = ui->getString("Enter Aircraft Type (e.g., Boeing737, AirbusA320): ");
-
-	// Validate aircraft type
-	if (!validateAircraftType(aircraftType))
-	{
-		throw AircraftException(AircraftErrorCode::INVALID_AIRCRAFT_TYPE);
-	}
-
-	this->aircraftType = aircraftType;
-
-	ui->println("\n--- Add New Aircraft Type ---");
-	string manufacturer = ui->getString("Enter Manufacturer: ");
-	string model = ui->getString("Enter Model: ");
-	int totalSeats = ui->getInt("Enter Total Seats (" + std::to_string(MIN_SEATS) + "-" + std::to_string(MAX_SEATS) + "): ");
-	
-	// Validate seat count
-	if (totalSeats < MIN_SEATS || totalSeats > MAX_SEATS)
-	{
-		throw AircraftException(AircraftErrorCode::INVALID_SEAT_NUMBER);
-	}
-	
-	string seatLayout = ui->getString("Enter Seat Layout (e.g., 3-3 for 3 seats-aisle-3 seats): ");
-	
-	// Validate seat layout using SeatMap
-	if (!SeatMap::validateSeatLayout(seatLayout))
-	{
-		throw AircraftException(AircraftErrorCode::INVALID_SEAT_LAYOUT);
-	}
-	
-	int rows = ui->getInt("Enter Number of Rows: ");
-	
-	// Validate rows and that layout produces valid seats
-	try
-	{
-		SeatMap tempSeatMap(seatLayout, rows);
-	}
-	catch (const SeatMapException& e)
-	{
-		throw AircraftException(AircraftErrorCode::INVALID_SEAT_LAYOUT);
-	}
-	
-	int fleetCount = ui->getInt("Enter Fleet Count (number of aircraft owned): ");
-	string status = selectAircraftStatus();
-
-	if (db->entryExists(aircraftType))
-	{
-		throw AircraftException(AircraftErrorCode::AIRCRAFT_EXISTS);
-	}
-
-	json aircraftData;
-	aircraftData["manufacturer"] = manufacturer;
-	aircraftData["model"] = model;
-	aircraftData["totalSeats"] = totalSeats;
-	aircraftData["seatLayout"] = seatLayout;
-	aircraftData["rows"] = rows;
-	aircraftData["fleetCount"] = fleetCount;
-	aircraftData["status"] = status;
-
-	db->addEntry(this->aircraftType, aircraftData);
-
-	ui->println("");
-	ui->printSuccess("Aircraft type '" + aircraftType + "' has been successfully added to the fleet.");
-}
-
-Aircraft::Aircraft(const string& aircraftType) : aircraftType(aircraftType)
-{
-	// Load aircraft data to verify aircraft exists
-	if (!db->entryExists(aircraftType))
-	{
-		throw AircraftException(AircraftErrorCode::AIRCRAFT_NOT_FOUND);
-	}
-}
-
-// ==================== Validation Methods ====================
-
-bool Aircraft::validateAircraftType(const string& aircraftType)
-{
-	// Check length
-	if (aircraftType.length() < MIN_AIRCRAFT_TYPE_LENGTH || 
-		aircraftType.length() > MAX_AIRCRAFT_TYPE_LENGTH)
-	{
-		return false;
-	}
-	
-	// Check characters (alphanumeric only, no spaces)
-	return std::all_of(aircraftType.begin(), aircraftType.end(), 
-		[](unsigned char c) { return std::isalnum(c); });
-}
-
-// ==================== Aircraft Management Menu ====================
-
-void Aircraft::manageAircraft()
-{
-	while (true)
-	{
-		ui->clearScreen();
-		
-		vector<string> options = {
-			"Add New Aircraft Type",
-			"Update Existing Aircraft Type",
-			"Remove Aircraft Type",
-			"View All Aircraft Types",
-			"Back to Main Menu"
-		};
-		
-		ui->displayMenu("Manage Aircraft", options);
-		int choice = ui->getChoice("Enter choice: ", 1, 5);
-		
-		switch (choice)
-		{
-			case 1:
-				addAircraft();
-				break;
-			case 2:
-				updateAircraft();
-				break;
-			case 3:
-				removeAircraft();
-				break;
-			case 4:
-				viewAllAircraft();
-				break;
-			case 5:
-				return; // Back to main menu
-			default:
-				ui->printError("Invalid choice.");
-				ui->pauseScreen();
-				break;
-		}
-	}
-}
-
-void Aircraft::addAircraft()
-{
-	ui->clearScreen();
-	ui->printHeader("Add New Aircraft Type");
-	
-	try
-	{
-		Aircraft newAircraft;
-	}
-	catch (const std::exception& e)
-	{
-		ui->printError(string(e.what()));
-	}
-	
-	ui->pauseScreen();
-}
-
-void Aircraft::viewAllAircraft()
-{
-	ui->clearScreen();
-	ui->printHeader("View All Aircraft Types");
-	
-	json allAircraftData = db->loadAll();
-	
-	if (allAircraftData.empty())
-	{
-		ui->printWarning("No aircraft types found in the system.");
-	}
-	else
-	{
-		vector<string> headers = {
-			"Aircraft Type", "Manufacturer", "Model", "Total Seats", "Layout", "Rows", "Fleet Count", "Status"
-		};
-		
-		vector<vector<string>> rows;
-		
-		for (const auto& [type, aircraftData] : allAircraftData.items())
-		{
-			string manufacturer = aircraftData.value("manufacturer", "N/A");
-			string model = aircraftData.value("model", "N/A");
-			int totalSeats = aircraftData.value("totalSeats", 0);
-			string layout = aircraftData.value("seatLayout", "N/A");
-			int rowCount = aircraftData.value("rows", 0);
-			int fleetCount = aircraftData.value("fleetCount", 0);
-			string status = aircraftData.value("status", "N/A");
-			
-			rows.push_back({
-				type,
-				manufacturer,
-				model,
-				std::to_string(totalSeats),
-				layout,
-				std::to_string(rowCount),
-				std::to_string(fleetCount),
-				status
-			});
-		}
-		
-		ui->displayTable(headers, rows);
-		ui->println("\nTotal Aircraft Types: " + std::to_string(allAircraftData.size()));
-	}
-	
-	ui->pauseScreen();
-}
-
-void Aircraft::updateAircraft()
-{
-	ui->clearScreen();
-
-	try
-	{
-		string aircraftType = ui->getString("Enter Aircraft Type to Update: ");
-		std::unique_ptr<Aircraft> aircraft = std::make_unique<Aircraft>(aircraftType);
-
-		ui->println("\nSelect information to update:");
-		vector<string> options = {
-			"Aircraft Details",
-			"Fleet Count",
-			"Status",
-			"Back to Manage Aircraft"
-		};
-
-		ui->displayMenu("Update Existing Aircraft Type", options);
-		int choice = ui->getChoice("Enter choice: ", 1, 4);
-
-		switch (choice)
-		{
-			case 1:
-				aircraft->updateAircraftDetails();
-				break;
-
-			case 2:
-			{
-				int newFleetCount = ui->getInt("Enter new Fleet Count: ");
-				aircraft->setFleetCount(newFleetCount);
-				ui->printSuccess("Fleet count updated successfully.");
-				break;
-			}
-
-			case 3:
-			{
-				string newStatus = aircraft->selectAircraftStatus();
-				aircraft->setStatus(newStatus);
-				ui->printSuccess("Aircraft status updated successfully.");
-				break;
-			}
-
-			case 4:
-				ui->println("Returning to Manage Aircraft menu.");
-				break;
-
-			default:
-				ui->printError("Invalid choice.");
-				break;
-		}
-	}
-	catch (const std::exception& e)
-	{
-		ui->printError(string(e.what()));
-	}
-
-	ui->pauseScreen();
-}
-
-// ==================== Update Aircraft Details ====================
-
-void Aircraft::updateAircraftDetails()
-{
-	ui->clearScreen();
-	ui->printHeader("--- Update Aircraft Details ---");
-
-	json aircraftData = db->getEntry(aircraftType);
-
-	ui->println("Current Aircraft Information:");
-	ui->println("1. Manufacturer: " + aircraftData.value("manufacturer", "N/A"));
-	ui->println("2. Model: " + aircraftData.value("model", "N/A"));
-	ui->println("3. Total Seats: " + std::to_string(aircraftData.value("totalSeats", 0)));
-	ui->println("4. Seat Layout: " + aircraftData.value("seatLayout", "N/A"));
-	ui->println("5. Rows: " + std::to_string(aircraftData.value("rows", 0)));
-	ui->println("6. Back to Previous Menu\n");
-
-	int choice = ui->getChoice("Select field to update (1-6): ", 1, 6);
-
-	if (choice == 6)
-	{
-		ui->printWarning("Returning to previous menu.");
-		return;
-	}
-
-	try
-	{
-		switch (choice)
-		{
-			case 1:
-			{
-				string newManufacturer = ui->getString("Enter new Manufacturer: ");
-				db->setAttribute(aircraftType, "manufacturer", newManufacturer);
-				break;
-			}
-			case 2:
-			{
-				string newModel = ui->getString("Enter new Model: ");
-				db->setAttribute(aircraftType, "model", newModel);
-				break;
-			}
-			case 3:
-			{
-				int newTotalSeats = ui->getInt("Enter new Total Seats: ");
-				if (newTotalSeats < MIN_SEATS || newTotalSeats > MAX_SEATS)
-				{
-					throw AircraftException(AircraftErrorCode::INVALID_SEAT_NUMBER);
-				}
-				db->setAttribute(aircraftType, "totalSeats", newTotalSeats);
-				break;
-			}
-			case 4:
-			{
-				string newLayout = ui->getString("Enter new Seat Layout (e.g., 3-3): ");
-				if (!SeatMap::validateSeatLayout(newLayout))
-				{
-					throw AircraftException(AircraftErrorCode::INVALID_SEAT_LAYOUT);
-				}
-				
-				// Validate with current rows
-				int currentRows = aircraftData.value("rows", 0);
-				try
-				{
-					SeatMap tempSeatMap(newLayout, currentRows);
-				}
-				catch (const SeatMapException& e)
-				{
-					throw AircraftException(AircraftErrorCode::INVALID_SEAT_LAYOUT);
-				}
-				
-				db->setAttribute(aircraftType, "seatLayout", newLayout);
-				break;
-			}
-			case 5:
-			{
-				int newRows = ui->getInt("Enter new Number of Rows: ");
-				
-				// Validate with current layout
-				string currentLayout = aircraftData.value("seatLayout", "");
-				try
-				{
-					SeatMap tempSeatMap(currentLayout, newRows);
-				}
-				catch (const SeatMapException& e)
-				{
-					throw AircraftException(AircraftErrorCode::INVALID_SEAT_LAYOUT);
-				}
-				
-				db->setAttribute(aircraftType, "rows", newRows);
-				break;
-			}
-			default:
-				ui->printError("Invalid choice.");
-				return;
-		}
-
-		ui->printSuccess("Aircraft details updated successfully.");
-	}
-	catch (const std::exception& e)
-	{
-		ui->printError("Error updating aircraft details: " + string(e.what()));
-	}
-
-	ui->pauseScreen();
-}
-
-void Aircraft::removeAircraft()
-{
-	ui->clearScreen();
-	ui->printHeader("Remove Aircraft Type");
-	
-	try
-	{
-		string aircraftType = ui->getString("Enter Aircraft Type to Remove: ");
-		
-		// Check if aircraft exists
-		if (!db->entryExists(aircraftType))
-		{
-			throw AircraftException(AircraftErrorCode::AIRCRAFT_NOT_FOUND);
-		}
-		
-		// TODO: Check if aircraft type is being used by any flights
-		// Should query Flight database to ensure no active flights use this type
-		
-		bool confirm = ui->getYesNo("Are you sure you want to remove aircraft type '" + aircraftType + "'?");
-		if (confirm)
-		{
-			db->deleteEntry(aircraftType);
-			
-			ui->printSuccess("Aircraft type '" + aircraftType + "' has been removed successfully.");
-		}
-		else
-		{
-			ui->printWarning("Aircraft removal canceled.");
-		}
-	}
-	catch (const std::exception& e)
-	{
-		ui->printError(string(e.what()));
-	}
-	
-	ui->pauseScreen();
-}
+Aircraft::Aircraft(const string& aircraftType, const string& manufacturer, const string& model,
+                   int totalSeats, const string& seatLayout, int rows, int fleetCount,
+                   const string& status)
+	: aircraftType(aircraftType), manufacturer(manufacturer), model(model),
+	  totalSeats(totalSeats), seatLayout(seatLayout), rows(rows),
+	  fleetCount(fleetCount), status(status)
+{}
 
 // ==================== Getters ====================
 
@@ -424,175 +17,87 @@ string Aircraft::getAircraftType() const noexcept
 	return aircraftType;
 }
 
-string Aircraft::getManufacturer() const
+string Aircraft::getManufacturer() const noexcept
 {
-	return db->getAttribute(aircraftType, "manufacturer");
+	return manufacturer;
 }
 
-string Aircraft::getModel() const
+string Aircraft::getModel() const noexcept
 {
-	return db->getAttribute(aircraftType, "model");
+	return model;
 }
 
-int Aircraft::getTotalSeats() const
+int Aircraft::getTotalSeats() const noexcept
 {
-	return db->getAttribute(aircraftType, "totalSeats");
+	return totalSeats;
 }
 
-string Aircraft::getSeatLayout() const
+string Aircraft::getSeatLayout() const noexcept
 {
-	return db->getAttribute(aircraftType, "seatLayout");
+	return seatLayout;
 }
 
-int Aircraft::getRows() const
+int Aircraft::getRows() const noexcept
 {
-	return db->getAttribute(aircraftType, "rows");
+	return rows;
 }
 
-int Aircraft::getFleetCount() const
+int Aircraft::getFleetCount() const noexcept
 {
-	return db->getAttribute(aircraftType, "fleetCount");
+	return fleetCount;
 }
 
-string Aircraft::getStatus() const
+string Aircraft::getStatus() const noexcept
 {
-	return db->getAttribute(aircraftType, "status");
+	return status;
 }
 
 // ==================== Setters ====================
 
-void Aircraft::setManufacturer(const string& manufacturer)
+void Aircraft::setManufacturer(const string& manufacturer) noexcept
 {
-	db->setAttribute(aircraftType, "manufacturer", manufacturer);
+	this->manufacturer = manufacturer;
 }
 
-void Aircraft::setModel(const string& model)
+void Aircraft::setModel(const string& model) noexcept
 {
-	db->setAttribute(aircraftType, "model", model);
+	this->model = model;
 }
 
-void Aircraft::setTotalSeats(int seats)
+void Aircraft::setTotalSeats(int totalSeats) noexcept
 {
-	if (seats < MIN_SEATS || seats > MAX_SEATS)
-	{
-		throw AircraftException(AircraftErrorCode::INVALID_SEAT_NUMBER);
-	}
-	
-	db->setAttribute(aircraftType, "totalSeats", seats);
+	this->totalSeats = totalSeats;
 }
 
-void Aircraft::setSeatLayout(const string& layout)
+void Aircraft::setSeatLayout(const string& seatLayout) noexcept
 {
-	if (!SeatMap::validateSeatLayout(layout))
-	{
-		throw AircraftException(AircraftErrorCode::INVALID_SEAT_LAYOUT);
-	}
-	
-	db->setAttribute(aircraftType, "seatLayout", layout);
+	this->seatLayout = seatLayout;
 }
 
-void Aircraft::setRows(int rows)
+void Aircraft::setRows(int rows) noexcept
 {
-	db->setAttribute(aircraftType, "rows", rows);
+	this->rows = rows;
 }
 
-void Aircraft::setFleetCount(int count)
+void Aircraft::setFleetCount(int fleetCount) noexcept
 {
-	db->setAttribute(aircraftType, "fleetCount", count);
+	this->fleetCount = fleetCount;
 }
 
-void Aircraft::setStatus(const string& status)
+void Aircraft::setStatus(const string& status) noexcept
 {
-	db->setAttribute(aircraftType, "status", status);
-}
-
-// ==================== Utility ====================
-
-void Aircraft::displayAircraftInfo() const
-{
-	ui->clearScreen();
-	ui->printHeader("AIRCRAFT INFORMATION");
-	
-	// Load all data at once using bulk operation
-	json aircraftData = db->getEntry(aircraftType);
-	
-	ui->println("Aircraft Type: " + getAircraftType());
-	ui->println("Manufacturer: " + aircraftData.value("manufacturer", "N/A"));
-	ui->println("Model: " + aircraftData.value("model", "N/A"));
-	ui->println("Total Seats: " + std::to_string(aircraftData.value("totalSeats", 0)));
-	ui->println("Seat Layout: " + aircraftData.value("seatLayout", "N/A"));
-	ui->println("Rows: " + std::to_string(aircraftData.value("rows", 0)));
-	ui->println("Fleet Count: " + std::to_string(aircraftData.value("fleetCount", 0)));
-	ui->println("Status: " + aircraftData.value("status", "N/A"));
-	
-	// Display sample seat map using UI grid display
-	string layout = aircraftData.value("seatLayout", "");
-	int rows = aircraftData.value("rows", 0);
-	
-	vector<string> rowLabels;
-	vector<vector<string>> gridData;
-	SeatMap::getSampleSeatMapDisplayData(layout, rows, rowLabels, gridData);
-	
-	GridDisplayConfig config;
-	config.title = "Sample Seat Map (first " + std::to_string(DEFAULT_DISPLAY_ROWS) + " rows)";
-	config.footerLines = SeatMap::getSampleSeatMapFooter(layout, rows);
-	config.showSeparator = false;
-	
-	ui->displayGrid(rowLabels, gridData, config);
-}
-
-// ==================== Helper Functions ====================
-
-string Aircraft::selectAircraftStatus()
-{
-	vector<string> statusOptions = {
-		"Available",
-		"In Flight",
-		"Maintenance",
-		"Out of Service"
-	};
-	
-	ui->displayMenu("Select Aircraft Status", statusOptions);
-	int choice = ui->getChoice("Enter status: ", 1, 4);
-	
-	return statusOptions[choice - 1];
-}
-
-// ==================== Operational Methods ====================
-
-vector<string> Aircraft::getAllAircraftTypes()
-{
-	vector<string> types;
-	json allAircraftData = db->loadAll();
-	
-	for (const auto& [type, data] : allAircraftData.items())
-	{
-		types.push_back(type);
-	}
-	
-	return types;
-}
-
-bool Aircraft::aircraftTypeExists(const string& aircraftType)
-{
-	return db->entryExists(aircraftType);
-}
-
-// ==================== Static initialization ====================
-
-void Aircraft::initializeAircraftSystem()
-{
-	ui = UserInterface::getInstance();
-	db = std::make_unique<Database>("Databases/Aircraft.json");
+	this->status = status;
 }
 
 // ==================== AircraftException Class ====================
 
-AircraftException::AircraftException(AircraftErrorCode code): errorCode(code) {}
+AircraftException::AircraftException(AircraftErrorCode code) : errorCode(code), message(getErrorMessage()) {}
+
+AircraftException::AircraftException(AircraftErrorCode code, const string& customMessage) : errorCode(code), message(customMessage) {}
 
 const char* AircraftException::what() const noexcept
 {
-	return getErrorMessage().c_str();
+	return message.c_str();
 }
 
 AircraftErrorCode AircraftException::getErrorCode() const noexcept
@@ -609,16 +114,20 @@ string AircraftException::getErrorMessage() const noexcept
 		case AircraftErrorCode::AIRCRAFT_EXISTS:
 			return "Aircraft type already exists in the system.";
 		case AircraftErrorCode::INVALID_AIRCRAFT_TYPE:
-			return "Invalid aircraft type. Must be " + std::to_string(MIN_AIRCRAFT_TYPE_LENGTH) + "-" + 
-				   std::to_string(MAX_AIRCRAFT_TYPE_LENGTH) + " characters, alphanumeric only, no spaces.";
+			return "Invalid aircraft type. Must be 2-30 characters, alphanumeric only.";
 		case AircraftErrorCode::INVALID_SEAT_LAYOUT:
 			return "Invalid seat layout. Expected format: N-N or N-N-N (e.g., 3-3 or 2-4-2).";
-		case AircraftErrorCode::INVALID_SEAT_NUMBER:
-			return "Invalid seat number or count. Total seats must be between " + 
-				   std::to_string(MIN_SEATS) + " and " + std::to_string(MAX_SEATS) + ".";
+		case AircraftErrorCode::INVALID_SEAT_COUNT:
+			return "Invalid seat count. Must be between 50 and 500.";
+		case AircraftErrorCode::INVALID_MANUFACTURER:
+			return "Invalid manufacturer. Must not be empty and less than 50 characters.";
+		case AircraftErrorCode::INVALID_MODEL:
+			return "Invalid model. Must not be empty and less than 50 characters.";
+		case AircraftErrorCode::INVALID_FLEET_COUNT:
+			return "Invalid fleet count. Must be positive.";
 		case AircraftErrorCode::DATABASE_ERROR:
-			return "An error occurred while accessing the aircraft database.";
+			return "An error occurred while accessing the database.";
 		default:
-			return "An unknown error occurred.";
+			return "An unknown aircraft error occurred.";
 	}
 }

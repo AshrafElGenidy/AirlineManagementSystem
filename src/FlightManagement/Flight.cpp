@@ -1,6 +1,7 @@
 #include <algorithm>
 #include "Flight.hpp"
 #include "Aircraft.hpp"
+#include "AircraftManager.hpp"
 #include "SeatMap.hpp"
 
 // ==================== Flight Constructor ====================
@@ -61,17 +62,18 @@ double Flight::getPrice() const noexcept
 
 int Flight::getTotalSeats() const
 {
-	// Query Aircraft for seat count based on aircraft type
+	// Query AircraftManager for seat count based on aircraft type
 	try
 	{
-		Aircraft aircraft(aircraftType);
-		string seatLayout = aircraft.getSeatLayout();
-		int rows = aircraft.getRows();
+		shared_ptr<Aircraft> aircraft = AircraftManager::getInstance()->getAircraft(aircraftType);
+		if (!aircraft)
+		{
+			throw FlightException(FlightErrorCode::INVALID_AIRCRAFT_TYPE);
+		}
+		
+		string seatLayout = aircraft->getSeatLayout();
+		int rows = aircraft->getRows();
 		return SeatMap::calculateSeatCount(seatLayout, rows);
-	}
-	catch (const AircraftException& e)
-	{
-		throw FlightException(FlightErrorCode::INVALID_AIRCRAFT_TYPE);
 	}
 	catch (const SeatMapException& e)
 	{
@@ -122,6 +124,31 @@ void Flight::setBoardingTime(const string& boardingTime) noexcept
 	this->boardingTime = boardingTime;
 }
 
+void Flight::setOrigin(const string& origin) noexcept
+{
+	this->origin = origin;
+}
+
+void Flight::setDestination(const string& destination) noexcept
+{
+	this->destination = destination;
+}
+
+void Flight::setDepartureDateTime(const string& departureDateTime) noexcept
+{
+	this->departureDateTime = departureDateTime;
+}
+
+void Flight::setArrivalDateTime(const string& arrivalDateTime) noexcept
+{
+	this->arrivalDateTime = arrivalDateTime;
+}
+
+void Flight::setAircraftType(const string& aircraftType) noexcept
+{
+	this->aircraftType = aircraftType;
+}
+
 // ==================== Seat Management ====================
 
 bool Flight::reserveSeat(const string& seatNumber)
@@ -136,9 +163,14 @@ bool Flight::reserveSeat(const string& seatNumber)
 	// Check if seat is valid for this aircraft
 	try
 	{
-		Aircraft aircraft(aircraftType);
-		string seatLayout = aircraft.getSeatLayout();
-		int rows = aircraft.getRows();
+		shared_ptr<Aircraft> aircraft = AircraftManager::getInstance()->getAircraft(aircraftType);
+		if (!aircraft)
+		{
+			throw FlightException(FlightErrorCode::INVALID_AIRCRAFT_TYPE);
+		}
+		
+		string seatLayout = aircraft->getSeatLayout();
+		int rows = aircraft->getRows();
 		SeatMap seatMap(seatLayout, rows);
 		
 		if (!seatMap.isValidSeat(seatNumber))
@@ -146,10 +178,6 @@ bool Flight::reserveSeat(const string& seatNumber)
 			throw FlightException(FlightErrorCode::SEAT_OPERATION_FAILED, 
 								 "Seat " + seatNumber + " is invalid for this aircraft.");
 		}
-	}
-	catch (const AircraftException& e)
-	{
-		throw FlightException(FlightErrorCode::INVALID_AIRCRAFT_TYPE);
 	}
 	catch (const SeatMapException& e)
 	{

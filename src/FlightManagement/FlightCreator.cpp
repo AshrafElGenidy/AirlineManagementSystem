@@ -2,7 +2,7 @@
 #include <algorithm>
 #include <sstream>
 #include "FlightCreator.hpp"
-#include "Aircraft.hpp"
+#include "AircraftManager.hpp"
 
 // ==================== FlightValidator ====================
 
@@ -269,7 +269,7 @@ string FlightCreator::getValidAircraftType()
 	{
 		try
 		{
-			vector<string> aircraftTypes = Aircraft::getAllAircraftTypes();
+			vector<string> aircraftTypes = AircraftManager::getInstance()->getAllAircraftTypes();
 			
 			if (aircraftTypes.empty())
 			{
