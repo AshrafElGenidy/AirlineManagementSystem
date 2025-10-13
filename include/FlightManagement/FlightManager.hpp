@@ -33,7 +33,6 @@ private:
 	void viewAllFlights();
 	void updateFlight();
 	void removeFlight();
-	void searchFlights();
 	
 	// Helper methods
 	shared_ptr<Flight> loadFlightFromDatabase(const string& flightNumber);
@@ -55,6 +54,7 @@ public:
 	
 	// Main menu
 	void manageFlights();
+	void searchFlights();
 	
 	// Query methods (for other classes to use)
 	shared_ptr<Flight> getFlight(const string& flightNumber);

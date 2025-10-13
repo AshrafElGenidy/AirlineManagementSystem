@@ -1,5 +1,6 @@
 #include "BookingAgent.hpp"
 #include "FlightManager.hpp"
+#include "ReservationManager.hpp"
 #include "UserInterface.hpp"
 #include <vector>
 
@@ -22,18 +23,15 @@ void BookingAgent::userMenu()
 {
 	UserInterface* ui = UserInterface::getInstance();
 	
-	// Initialize managers on first use
-	if (flightManager == nullptr)
-		flightManager = FlightManager::getInstance();
-	
 	while (true)
 	{
 		ui->clearScreen();
 		
 		vector<string> options = {
 			"Search Flights",
-			"Make Reservation",
+			"Create Reservation",
 			"View Reservations",
+			"Modify Reservation",
 			"Cancel Reservation",
 			"Logout"
 		};
@@ -42,31 +40,30 @@ void BookingAgent::userMenu()
 		
 		try
 		{
-			int choice = ui->getChoice("Enter choice: ", 1, 5);
+			int choice = ui->getChoice("Enter choice: ", 1, 6);
 			
 			switch (choice)
 			{
 				case 1:
-					ui->printWarning("Search flights functionality not yet implemented.");
-					ui->pauseScreen();
+					FlightManager::getInstance()->searchFlights();
 					break;
 				case 2:
-					ui->printWarning("Make reservation functionality not yet implemented.");
-					ui->pauseScreen();
+					ReservationManager::getInstance()->createReservation(username);
 					break;
 				case 3:
-					ui->printWarning("View reservations functionality not yet implemented.");
-					ui->pauseScreen();
+					ReservationManager::getInstance()->viewReservations(username, UserRole::BOOKING_AGENT);
 					break;
 				case 4:
-					ui->printWarning("Cancel reservation functionality not yet implemented.");
-					ui->pauseScreen();
+					ReservationManager::getInstance()->modifyReservation(username);
 					break;
 				case 5:
+					ReservationManager::getInstance()->cancelReservation(username);
+					break;
+				case 6:
 					ui->printSuccess("User " + username + " logged out successfully.");
-					return; // Exit menu loop
+					return;
 				default:
-					ui->printError("Invalid choice. Please try again.");
+					ui->printError("Invalid choice.");
 					ui->pauseScreen();
 					break;
 			}

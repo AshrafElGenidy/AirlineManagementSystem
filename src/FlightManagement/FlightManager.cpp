@@ -2,6 +2,7 @@
 #include <algorithm>
 #include <iomanip>
 #include "FlightManager.hpp"
+#include "ReservationManager.hpp"
 
 // Static member initialization
 FlightManager* FlightManager::instance = nullptr;
@@ -265,12 +266,14 @@ void FlightManager::removeFlight()
 			return;
 		}
 		
-		// Check for active reservations (when Reservation system is implemented)
-		// if (hasActiveReservations(flightNumber)) {
-		//     ui->printError("Cannot delete flight with active reservations.");
-		//     ui->pauseScreen();
-		//     return;
-		// }
+		// Check for active reservations
+		if (ReservationManager::hasActiveReservations(flightNumber))
+		{
+			ui->printError("Cannot delete flight with active reservations.");
+			ui->println("Please cancel all reservations before deleting the flight.");
+			ui->pauseScreen();
+			return;
+		}
 		
 		try
 		{
@@ -695,7 +698,5 @@ bool FlightManager::flightExists(const string& flightNumber)
 
 bool FlightManager::hasActiveReservations(const string& flightNumber)
 {
-	// TODO: Implement when Reservation system is created
-	// This will check if a flight has any active reservations
-	return false;
+	return ReservationManager::hasActiveReservations(flightNumber);
 }

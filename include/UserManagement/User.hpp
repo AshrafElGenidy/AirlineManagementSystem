@@ -53,4 +53,30 @@ public:
 	virtual void userMenu() = 0;
 };
 
+// ==================== UserException Class ====================
+
+enum class UserErrorCode
+{
+	USERNAME_TAKEN,
+	INVALID_USERNAME,
+	INVALID_PASSWORD,
+	USER_NOT_FOUND,
+	INCORRECT_PASSWORD,
+	DATABASE_ERROR,
+	INVALID_INPUTS
+};
+
+class UserException : public std::exception
+{
+private:
+	UserErrorCode errorCode;
+	string getErrorMessage() const noexcept;
+
+public:
+	UserException(UserErrorCode code);
+	const char* what() const noexcept override;
+	virtual ~UserException() noexcept = default;
+	UserErrorCode getErrorCode() const noexcept;
+};
+
 #endif // USER_HPP
