@@ -3,6 +3,7 @@
 #include "FlightManager.hpp"
 #include "AircraftManager.hpp"
 #include "UserInterface.hpp"
+#include "CrewManager.hpp"
 #include <vector>
 
 // ==================== Constructors ====================
@@ -29,9 +30,10 @@ void Administrator::userMenu()
 		ui->clearScreen();
 		
 		vector<string> options = {
+			"Manage Users",
 			"Manage Flights",
 			"Manage Aircraft",
-			"Manage Users",
+			"Manage Crew",
 			"Generate Reports",
 			"Logout"
 		};
@@ -40,24 +42,27 @@ void Administrator::userMenu()
 		
 		try
 		{
-			int choice = ui->getChoice("Enter choice: ", 1, 5);
+			int choice = ui->getChoice("Enter choice: ", 1, 6);
 			
 			switch (choice)
 			{
 				case 1:
-					FlightManager::getInstance()->manageFlights();
-					break;
-				case 2:
-					AircraftManager::getInstance()->manageAircraft();
-					break;
-				case 3:
 					UsersManager::getInstance()->manageUsers();
 					break;
+				case 2:
+					FlightManager::getInstance()->manageFlights();
+					break;
+				case 3:
+					AircraftManager::getInstance()->manageAircraft();
+					break;
 				case 4:
+					CrewManager::getInstance()->manageCrew();
+					break;
+				case 5:
 					ui->printWarning("Report generation not yet implemented.");
 					ui->pauseScreen();
 					break;
-				case 5:
+				case 6:
 					ui->printSuccess("User " + username + " logged out successfully.");
 					return; // Exit menu loop
 				default:

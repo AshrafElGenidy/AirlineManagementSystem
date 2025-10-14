@@ -33,11 +33,13 @@ private:
 	void viewAllFlights();
 	void updateFlight();
 	void removeFlight();
+	void assignCrewToFlight(const shared_ptr<Flight>& flight);
 	
 	// Helper methods
 	shared_ptr<Flight> loadFlightFromDatabase(const string& flightNumber);
 	void saveFlightToDatabase(const shared_ptr<Flight>& flight);
 	void deleteFlightFromDatabase(const string& flightNumber);
+	void updateCrewFlightHours(const shared_ptr<Flight>& flight);
 	
 	// Helper for updating flight details
 	void updateFlightDetails(const shared_ptr<Flight>& flight);

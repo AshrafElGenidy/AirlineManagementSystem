@@ -368,6 +368,7 @@ json FlightCreator::toJson(const shared_ptr<Flight>& flight)
 	flightData["gate"] = flight->getGate();
 	flightData["boardingTime"] = flight->getBoardingTime();
 	flightData["reservedSeats"] = flight->getReservedSeats();
+	flightData["assignedCrewIds"] = flight->getAssignedCrew();
 	
 	return flightData;
 }
@@ -394,8 +395,17 @@ shared_ptr<Flight> FlightCreator::createFromJson(const json& data)
 			reservedSeats.push_back(seat.get<string>());
 		}
 	}
+
+	vector<string> assignedCrewIds;
+    if (data.contains("assignedCrewIds") && data["assignedCrewIds"].is_array())
+    {
+        for (const auto& crewId : data["assignedCrewIds"])
+        {
+            assignedCrewIds.push_back(crewId.get<string>());
+        }
+    }
 	
 	// Create and return Flight
 	return std::make_shared<Flight>(flightNumber, origin, destination, departureDateTime, arrivalDateTime,
-					aircraftType, status, price, gate, boardingTime, reservedSeats);
+					aircraftType, status, price, gate, boardingTime, reservedSeats, assignedCrewIds);
 }

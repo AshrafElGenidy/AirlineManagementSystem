@@ -1,0 +1,198 @@
+#include <algorithm>
+#include <cctype>
+#include "Crew.hpp"
+
+// ==================== Crew Constructor ====================
+
+Crew::Crew(const string& crewId, const string& name, CrewRole role, CrewStatus status, double totalFlightHours)
+	: crewId(crewId), name(name), role(role), status(status), totalFlightHours(totalFlightHours)
+{
+}
+
+// ==================== Getters ====================
+
+string Crew::getCrewId() const noexcept
+{
+	return crewId;
+}
+
+string Crew::getName() const noexcept
+{
+	return name;
+}
+
+CrewRole Crew::getRole() const noexcept
+{
+	return role;
+}
+
+CrewStatus Crew::getStatus() const noexcept
+{
+	return status;
+}
+
+double Crew::getTotalFlightHours() const noexcept
+{
+	return totalFlightHours;
+}
+
+// ==================== Setters ====================
+
+void Crew::setName(const string& name) noexcept
+{
+	this->name = name;
+}
+
+void Crew::setRole(CrewRole role) noexcept
+{
+	this->role = role;
+}
+
+void Crew::setStatus(CrewStatus status) noexcept
+{
+	this->status = status;
+}
+
+// ==================== Flight Hours and Certifications ====================
+
+void Crew::addFlightHours(double hours) noexcept
+{
+	if (hours > 0)
+	{
+		totalFlightHours += hours;
+	}
+}
+
+// ==================== Validation and Conversion Methods ====================
+
+bool Crew::isValidCrewId(const string& crewId)
+{
+	// Format: CRW followed by digits (e.g., CRW001)
+	if (crewId.length() < 6 || crewId.length() > 10)
+		return false;
+	
+	if (crewId.substr(0, 3) != "CRW")
+		return false;
+	
+	return std::all_of(crewId.begin() + 3, crewId.end(),
+		[](unsigned char c) { return std::isdigit(c); });
+}
+
+bool Crew::isValidName(const string& name)
+{
+	// Non-empty, max 50 chars, alphanumeric + space/hyphen
+	if (name.empty() || name.length() > 50)
+		return false;
+	
+	return std::all_of(name.begin(), name.end(),
+		[](unsigned char c) { return std::isalnum(c) || c == ' ' || c == '-'; });
+}
+
+string Crew::roleToString(CrewRole role) noexcept
+{
+	switch (role)
+	{
+		case CrewRole::PILOT:
+			return "Pilot";
+		case CrewRole::COPILOT:
+			return "Copilot";
+		case CrewRole::FLIGHT_ATTENDANT:
+			return "Flight Attendant";
+		default:
+			return "Unknown";
+	}
+}
+
+CrewRole Crew::stringToRole(const string& roleStr)
+{
+	string role = roleStr;
+	std::transform(role.begin(), role.end(), role.begin(),
+		[](unsigned char c) { return std::tolower(c); });
+	
+	if (role == "pilot")
+		return CrewRole::PILOT;
+	if (role == "copilot")
+		return CrewRole::COPILOT;
+	if (role == "flight attendant")
+		return CrewRole::FLIGHT_ATTENDANT;
+	
+	throw CrewException(CrewErrorCode::INVALID_ROLE, "Unknown role: " + roleStr);
+}
+
+string Crew::statusToString(CrewStatus status) noexcept
+{
+	switch (status)
+	{
+		case CrewStatus::AVAILABLE:
+			return "Available";
+		case CrewStatus::ASSIGNED:
+			return "Assigned";
+		case CrewStatus::ON_LEAVE:
+			return "On Leave";
+		default:
+			return "Unknown";
+	}
+}
+
+CrewStatus Crew::stringToStatus(const string& statusStr)
+{
+	string status = statusStr;
+	std::transform(status.begin(), status.end(), status.begin(),
+		[](unsigned char c) { return std::tolower(c); });
+	
+	if (status == "available")
+		return CrewStatus::AVAILABLE;
+	if (status == "assigned")
+		return CrewStatus::ASSIGNED;
+	if (status == "on leave")
+		return CrewStatus::ON_LEAVE;
+	
+	throw CrewException(CrewErrorCode::INVALID_STATUS, "Unknown status: " + statusStr);
+}
+
+// ==================== CrewException Class ====================
+
+CrewException::CrewException(CrewErrorCode code)
+	: errorCode(code), message(getErrorMessage())
+{
+}
+
+CrewException::CrewException(CrewErrorCode code, const string& customMessage)
+	: errorCode(code), message(customMessage)
+{
+}
+
+const char* CrewException::what() const noexcept
+{
+	return message.c_str();
+}
+
+CrewErrorCode CrewException::getErrorCode() const noexcept
+{
+	return errorCode;
+}
+
+string CrewException::getErrorMessage() const noexcept
+{
+	switch (errorCode)
+	{
+		case CrewErrorCode::CREW_NOT_FOUND:
+			return "Crew member does not exist.";
+		case CrewErrorCode::CREW_EXISTS:
+			return "Crew member already exists in the system.";
+		case CrewErrorCode::INVALID_CREW_ID:
+			return "Invalid crew ID. Must be CRW followed by 3-7 digits (e.g., CRW001).";
+		case CrewErrorCode::INVALID_NAME:
+			return "Invalid name. Must not be empty, less than 50 characters. Allowed: alphanumeric, space, hyphen.";
+		case CrewErrorCode::INVALID_ROLE:
+			return "Invalid role. Must be Pilot, Copilot, or Flight Attendant.";
+		case CrewErrorCode::INVALID_STATUS:
+			return "Invalid status. Must be Available, Assigned, or On Leave.";
+		case CrewErrorCode::FLIGHT_HOURS_EXCEEDED:
+			return "Crew member has exceeded maximum flight hours for this period.";
+		case CrewErrorCode::DATABASE_ERROR:
+			return "An error occurred while accessing the database.";
+		default:
+			return "An unknown crew error occurred.";
+	}
+}

@@ -3,6 +3,8 @@
 #include <iomanip>
 #include "FlightManager.hpp"
 #include "ReservationManager.hpp"
+#include "Crew.hpp"
+#include "CrewManager.hpp"
 
 // Static member initialization
 FlightManager* FlightManager::instance = nullptr;
@@ -109,13 +111,9 @@ void FlightManager::addFlight()
 		saveFlightToDatabase(newFlight);
 		ui->printSuccess("Flight " + newFlight->getFlightNumber() + " has been successfully added.");
 	}
-	catch (const FlightException& e)
-	{
-		ui->printError(e.what());
-	}
 	catch (const std::exception& e)
 	{
-		ui->printError("Error: " + string(e.what()));
+		ui->printError(string(e.what()));
 	}
 	
 	ui->pauseScreen();
@@ -157,7 +155,7 @@ void FlightManager::viewAllFlights()
 	}
 	catch (const std::exception& e)
 	{
-		ui->printError("Error retrieving flights: " + string(e.what()));
+		ui->printError(string(e.what()));
 	}
 	
 	ui->pauseScreen();
@@ -182,6 +180,7 @@ void FlightManager::updateFlight()
 		
 		vector<string> options = {
 			"Flight Details",
+			"Assign Crew to Flight",
 			"Status",
 			"Price",
 			"Back to Manage Flights"
@@ -189,62 +188,56 @@ void FlightManager::updateFlight()
 		
 		ui->displayMenu("Update Flight", options);
 		
-		try
+		int choice = ui->getChoice("Enter choice: ", 1, 4);
+		
+		switch (choice)
 		{
-			int choice = ui->getChoice("Enter choice: ", 1, 4);
-			
-			switch (choice)
+			case 1:
+				updateFlightDetails(flight);
+				break;
+			case 2:
+				assignCrewToFlight(flight);
+				saveFlightToDatabase(flight);
+				break;
+			case 3:
 			{
-				case 1:
-					updateFlightDetails(flight);
-					break;
-				case 2:
+				string newStatus = selectFlightStatus();
+				flight->setStatus(newStatus);
+				ui->printSuccess("Flight status updated successfully.");
+				saveFlightToDatabase(flight);
+				if (newStatus == "Arrived")
 				{
-					string newStatus = selectFlightStatus();
-					flight->setStatus(newStatus);
-					ui->printSuccess("Flight status updated successfully.");
-					saveFlightToDatabase(flight);
-					break;
+					updateCrewFlightHours(flight);
 				}
-				case 3:
-				{
-					try
-					{
-						double newPrice = ui->getDouble("Enter new Price: ");
-						if (newPrice > 0)
-						{
-							flight->setPrice(newPrice);
-							ui->printSuccess("Flight price updated successfully.");
-							saveFlightToDatabase(flight);
-						}
-						else
-						{
-							ui->printError("Price must be positive.");
-						}
-					}
-					catch (const UIException& e)
-					{
-						ui->printError(e.what());
-					}
-					break;
-				}
-				case 4:
-					ui->println("Returning to Manage Flights menu.");
-					ui->pauseScreen();
-					return;
-				default:
-					ui->printError("Invalid choice.");
-					break;
+				break;
 			}
-		}
-		catch (const UIException& e)
-		{
-			ui->printError(e.what());
+			case 4:
+			{
+				double newPrice = ui->getDouble("Enter new Price: ");
+				if (newPrice > 0)
+				{
+					flight->setPrice(newPrice);
+					ui->printSuccess("Flight price updated successfully.");
+					saveFlightToDatabase(flight);
+				}
+				else
+				{
+					ui->printError("Price must be positive.");
+				}
+				break;
+			}
+			case 5:
+				ui->println("Returning to Manage Flights menu.");
+				ui->pauseScreen();
+				return;
+			default:
+				ui->printError("Invalid choice.");
+				break;
 		}
 	}
 	catch (const std::exception& e)
 	{
-		ui->printError("Error: " + string(e.what()));
+		ui->printError(string(e.what()));
 	}
 	
 	ui->pauseScreen();
@@ -274,28 +267,21 @@ void FlightManager::removeFlight()
 			ui->pauseScreen();
 			return;
 		}
-		
-		try
+
+		bool confirm = ui->getYesNo("Are you sure you want to remove flight '" + flightNumber + "'?");
+		if (confirm)
 		{
-			bool confirm = ui->getYesNo("Are you sure you want to remove flight '" + flightNumber + "'?");
-			if (confirm)
-			{
-				deleteFlightFromDatabase(flightNumber);
-				ui->printSuccess("Flight '" + flightNumber + "' has been removed successfully.");
-			}
-			else
-			{
-				ui->printWarning("Flight removal canceled.");
-			}
+			deleteFlightFromDatabase(flightNumber);
+			ui->printSuccess("Flight '" + flightNumber + "' has been removed successfully.");
 		}
-		catch (const UIException& e)
+		else
 		{
-			ui->printError(e.what());
+			ui->printWarning("Flight removal canceled.");
 		}
 	}
 	catch (const std::exception& e)
 	{
-		ui->printError("Error: " + string(e.what()));
+		ui->printError(string(e.what()));
 	}
 	
 	ui->pauseScreen();
@@ -323,13 +309,54 @@ void FlightManager::searchFlights()
 			displayFlightsTable(results, "Search Results");
 		}
 	}
-	catch (const UIException& e)
+	catch (const std::exception& e)
 	{
-		ui->printError(e.what());
+		ui->printError(string(e.what()));
+	}
+	
+	ui->pauseScreen();
+}
+
+void FlightManager::assignCrewToFlight(const shared_ptr<Flight>& flight)
+{
+	ui->clearScreen();
+	ui->printHeader("Assign Crew to Flight");
+	
+	try
+	{
+		vector<string> roleOptions = {
+			"Pilot",
+			"Copilot",
+			"Flight Attendant"
+		};
+		
+		ui->displayMenu("Select Crew Role", roleOptions);
+		int roleChoice = ui->getChoice("Enter role: ", 1, static_cast<int>(roleOptions.size()));
+		CrewRole selectedRole = Crew::stringToRole(roleOptions[roleChoice - 1]);
+		
+		CrewManager* crewMgr = CrewManager::getInstance();
+		vector<shared_ptr<Crew>> availableCrew = crewMgr->getAvailableCrew(selectedRole);
+		crewMgr->displayCrewTable(availableCrew, "Available crew for selection");
+		
+		string crewId = ui->getString("Enter Crew ID to assign: ");
+		
+		shared_ptr<Crew> selectedCrew = crewMgr->getCrew(crewId);
+		if (!selectedCrew)
+		{
+			ui->printError("Crew member not found.");
+			ui->pauseScreen();
+			return;
+		}
+		
+		flight->addCrewMember(crewId);
+		saveFlightToDatabase(flight);
+		crewMgr->markCrewAsAssigned(crewId);
+		
+		ui->printSuccess("Crew member " + crewId + " has been assigned to flight " + flight->getFlightNumber());
 	}
 	catch (const std::exception& e)
 	{
-		ui->printError("Error: " + string(e.what()));
+		ui->printError(string(e.what()));
 	}
 	
 	ui->pauseScreen();
@@ -351,7 +378,7 @@ shared_ptr<Flight> FlightManager::loadFlightFromDatabase(const string& flightNum
 	}
 	catch (const std::exception& e)
 	{
-		ui->printError("Error loading flight: " + string(e.what()));
+		ui->printError(string(e.what()));
 		return nullptr;
 	}
 }
@@ -486,17 +513,10 @@ void FlightManager::updateFlightDetails(const shared_ptr<Flight>& flight)
 			}
 			case 6:  // Update Gate
 			{
-				try
-				{
-					string newGate = ui->getString("Enter new Gate (e.g., A12, B5): ");
-					flight->setGate(newGate);
-					saveFlightToDatabase(flight);
-					ui->printSuccess("Gate updated successfully.");
-				}
-				catch (const UIException& e)
-				{
-					ui->printError(e.what());
-				}
+				string newGate = ui->getString("Enter new Gate (e.g., A12, B5): ");
+				flight->setGate(newGate);
+				saveFlightToDatabase(flight);
+				ui->printSuccess("Gate updated successfully.");
 				break;
 			}
 			case 7:  // Update Boarding Time
@@ -514,10 +534,6 @@ void FlightManager::updateFlightDetails(const shared_ptr<Flight>& flight)
 				ui->printError("Invalid choice.");
 				break;
 		}
-	}
-	catch (const UIException& e)
-	{
-		ui->printError(e.what());
 	}
 	catch (const FlightValidationException& e)
 	{
@@ -606,6 +622,18 @@ void FlightManager::displayFlightsTable(const vector<shared_ptr<Flight>>& flight
 	ui->displayTable(headers, rows);
 }
 
+void updateCrewFlightHours(const shared_ptr<Flight>& flight)
+{
+	double flightDuration = flight->getFlightDuration();
+    vector<string> crewIds = flight->getAssignedCrew();
+    
+    for (const string& crewId : crewIds)
+    {
+        CrewManager::getInstance()->addFlightHoursForCrew(crewId, flightDuration);
+        CrewManager::getInstance()->markCrewAsAvailable(crewId);
+    }
+}
+
 // ==================== Query Methods ====================
 
 shared_ptr<Flight> FlightManager::getFlight(const string& flightNumber)
@@ -658,7 +686,7 @@ vector<shared_ptr<Flight>> FlightManager::searchFlightsByRoute(const string& ori
 	}
 	catch (const std::exception& e)
 	{
-		ui->printError("Search error: " + string(e.what()));
+		ui->printError(string(e.what()));
 	}
 	
 	return results;
@@ -678,7 +706,7 @@ vector<string> FlightManager::getAllFlightNumbers()
 	}
 	catch (const std::exception& e)
 	{
-		ui->printError("Error retrieving flight numbers: " + string(e.what()));
+		ui->printError(string(e.what()));
 	}
 	
 	return flightNumbers;

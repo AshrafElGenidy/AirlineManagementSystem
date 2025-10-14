@@ -10,11 +10,12 @@ Flight::Flight(const string& flightNumber, const string& origin, const string& d
               const string& departureDateTime, const string& arrivalDateTime,
               const string& aircraftType, const string& status, double price,
               const string& gate, const string& boardingTime,
-              const vector<string>& reservedSeats)
+              const vector<string>& reservedSeats,
+			const vector<string>& assignedCrewIds)
 	: flightNumber(flightNumber), origin(origin), destination(destination),
 	  departureDateTime(departureDateTime), arrivalDateTime(arrivalDateTime),
 	  aircraftType(aircraftType), status(status), price(price),
-	  gate(gate), boardingTime(boardingTime), reservedSeats(reservedSeats)
+	  gate(gate), boardingTime(boardingTime), reservedSeats(reservedSeats), assignedCrewIds(assignedCrewIds)
 {
 }
 
@@ -100,6 +101,10 @@ string Flight::getBoardingTime() const noexcept
 vector<string> Flight::getReservedSeats() const noexcept
 {
 	return reservedSeats;
+}
+vector<string> Flight::getAssignedCrew() const noexcept
+{
+	return assignedCrewIds;
 }
 
 // ==================== Setters ====================
@@ -204,6 +209,68 @@ bool Flight::releaseSeat(const string& seatNumber)
 bool Flight::isSeatAvailable(const string& seatNumber) const noexcept
 {
 	return std::find(reservedSeats.begin(), reservedSeats.end(), seatNumber) == reservedSeats.end();
+}
+
+// ==================== Crew Management Methods ====================
+
+void Flight::addCrewMember(const string& crewId)
+{
+	if (!hasCrewMember(crewId))
+	{
+		assignedCrewIds.push_back(crewId);
+	}
+}
+
+void Flight::removeCrewMember(const string& crewId)
+{
+	auto it = std::find(assignedCrewIds.begin(), assignedCrewIds.end(), crewId);
+	if (it != assignedCrewIds.end())
+	{
+		assignedCrewIds.erase(it);
+	}
+}
+
+bool Flight::hasCrewMember(const string& crewId) const noexcept
+{
+	return std::find(assignedCrewIds.begin(), assignedCrewIds.end(), crewId) != assignedCrewIds.end();
+}
+
+double Flight::getFlightDuration() const
+{
+	// Parse departure and arrival times to calculate duration in hours
+	// Format: "YYYY-MM-DD HH:MM"
+	
+	if (departureDateTime.length() < 16 || arrivalDateTime.length() < 16)
+	{
+		return 0.0;
+	}
+	
+	try
+	{
+		// Extract hours and minutes from both times
+		int depHour = std::stoi(departureDateTime.substr(11, 2));
+		int depMin = std::stoi(departureDateTime.substr(14, 2));
+		int arrHour = std::stoi(arrivalDateTime.substr(11, 2));
+		int arrMin = std::stoi(arrivalDateTime.substr(14, 2));
+		
+		// Convert to total minutes
+		int depTotalMin = depHour * 60 + depMin;
+		int arrTotalMin = arrHour * 60 + arrMin;
+		
+		// Calculate duration in minutes (handle day wrap-around)
+		int durationMin = arrTotalMin - depTotalMin;
+		if (durationMin < 0)
+		{
+			durationMin += 24 * 60;  // Add 24 hours if arrival is next day
+		}
+		
+		// Convert to hours
+		return durationMin / 60.0;
+	}
+	catch (const std::exception&)
+	{
+		return 0.0;
+	}
 }
 
 // ==================== FlightException Class ====================

@@ -27,13 +27,15 @@ private:
 	string gate;
 	string boardingTime;
 	vector<string> reservedSeats;
+	vector<string> assignedCrewIds;
 	
 	// Private constructors - only FlightManager and FlightCreator can create
 	Flight(const string& flightNumber, const string& origin, const string& destination,
 	       const string& departureDateTime, const string& arrivalDateTime,
 	       const string& aircraftType, const string& status, double price,
 	       const string& gate, const string& boardingTime,
-	       const vector<string>& reservedSeats = {});
+	       const vector<string>& reservedSeats = {},
+	       const vector<string>& assignedCrewIds = {});
 	
 	friend class FlightManager;
 	friend class FlightCreator;
@@ -53,6 +55,7 @@ public:
 	string getGate() const noexcept;
 	string getBoardingTime() const noexcept;
 	vector<string> getReservedSeats() const noexcept;
+	vector<string> getAssignedCrew() const noexcept;
 	
 	// Setters
 	void setOrigin(const string& origin) noexcept;
@@ -69,6 +72,12 @@ public:
 	bool reserveSeat(const string& seatNumber);
 	bool releaseSeat(const string& seatNumber);
 	bool isSeatAvailable(const string& seatNumber) const noexcept;
+
+	// Crew management
+	void addCrewMember(const string& crewId);
+	void removeCrewMember(const string& crewId);
+	bool hasCrewMember(const string& crewId) const noexcept;
+	double getFlightDuration() const;
 	
 	// Destructor
 	virtual ~Flight() noexcept = default;
