@@ -4,6 +4,7 @@
 #include "AircraftManager.hpp"
 #include "UserInterface.hpp"
 #include "CrewManager.hpp"
+#include "ReportGenerator.hpp"
 #include <vector>
 
 // ==================== Constructors ====================
@@ -59,8 +60,8 @@ void Administrator::userMenu()
 					CrewManager::getInstance()->manageCrew();
 					break;
 				case 5:
-					ui->printWarning("Report generation not yet implemented.");
-					ui->pauseScreen();
+					ReportGenerator repGen;
+					repGen.generateReports();
 					break;
 				case 6:
 					ui->printSuccess("User " + username + " logged out successfully.");

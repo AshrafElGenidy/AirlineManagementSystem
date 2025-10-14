@@ -4,6 +4,8 @@
 #include <string>
 #include <vector>
 #include <memory>
+#include <sstream>
+#include <map>
 #include "Database.hpp"
 #include "UserInterface.hpp"
 #include "Flight.hpp"
@@ -28,15 +30,18 @@ private:
 	// Report generation methods
 	void generateFlightPerformanceReport();
 	void generateRevenueReport();
-	void generateOccupancyReport();
 	void generateReservationStatisticsReport();
 	void generateCrewSummaryReport();
 	void generateMaintenanceSummaryReport();
 	void generateUsersReport();
 	
-	// Export functionality
+	// Helper methods
 	void exportToFile(const string& reportName, const string& content);
 	string getCurrentDateTime() const;
+	void addReportHeader(std::ostringstream& oss, const string& title) const;
+	void displayAndLogSection(const string& title, const vector<string>& headers, 
+	                          const vector<vector<string>>& rows, std::ostringstream& reportContent);
+	void displayAndLogSummary(const vector<std::pair<string, string>>& stats, std::ostringstream& reportContent);
 	
 public:
 	ReportGenerator();
