@@ -712,6 +712,17 @@ vector<string> FlightManager::getAllFlightNumbers()
 	return flightNumbers;
 }
 
+vector<shared_ptr<Flight>> FlightManager::getAllFlights()
+{
+	vector<shared_ptr<Flight>> allFlights;
+	auto flightNumbers = getAllFlightNumbers();
+	for (const auto& flightNumber : flightNumbers)
+	{
+		allFlights.push_back(getFlight(flightNumber));
+	}
+	return allFlights;
+}
+
 bool FlightManager::flightExists(const string& flightNumber)
 {
 	try

@@ -62,6 +62,7 @@ public:
 	shared_ptr<Flight> getFlight(const string& flightNumber);
 	vector<shared_ptr<Flight>> searchFlightsByRoute(const string& origin, const string& destination, const string& departureDate);
 	vector<string> getAllFlightNumbers();
+	vector<shared_ptr<Flight>> getAllFlights();
 	bool flightExists(const string& flightNumber);
 	
 	// Deletion check (for cascade operations)

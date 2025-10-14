@@ -1,30 +1,51 @@
-#ifndef REPORT_GENERATOR_HPP
-#define REPORT_GENERATOR_HPP
+#ifndef REPORTGENERATOR_HPP
+#define REPORTGENERATOR_HPP
 
 #include <string>
-#include "OperationalReport.hpp"
-#include "MaintenanceReport.hpp"
-#include "FinancialReport.hpp"
+#include <vector>
+#include <memory>
+#include "Database.hpp"
+#include "UserInterface.hpp"
+#include "Flight.hpp"
+#include "Reservation.hpp"
+#include "Crew.hpp"
+#include "User.hpp"
+#include "json.hpp"
 
-class AirlineManagementSystem;
+using std::string;
+using std::vector;
+using std::unique_ptr;
+using std::shared_ptr;
+using nlohmann::json;
 
-enum class ReportType {
-	OPERATIONAL,
-	MAINTENANCE,
-	FINANCIAL
-};
+// ==================== ReportGenerator ====================
 
-class ReportGenerator {
+class ReportGenerator
+{
 private:
-    AirlineManagementSystem* airlineManagementSystem;
-
+	UserInterface* ui;
+	
+	// Report generation methods
+	void generateFlightPerformanceReport();
+	void generateRevenueReport();
+	void generateOccupancyReport();
+	void generateReservationStatisticsReport();
+	void generateCrewSummaryReport();
+	void generateMaintenanceSummaryReport();
+	void generateUsersReport();
+	
+	// Export functionality
+	void exportToFile(const string& reportName, const string& content);
+	string getCurrentDateTime() const;
+	
 public:
-    ReportGenerator(AirlineManagementSystem* controller);
-    
-    void generateOperationalReport(const std::string& month, const std::string& year);
-    void generateMaintenanceReport();
-    void generateUserActivityReport(const std::string& userId);
-    void generateFinancialReport(const std::string& period);
+	ReportGenerator();
+	
+	// Main menu
+	void generateReports();
+	
+	// Destructor
+	~ReportGenerator() noexcept = default;
 };
 
-#endif // REPORT_GENERATOR_HPP
+#endif // REPORTGENERATOR_HPP

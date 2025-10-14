@@ -48,7 +48,9 @@ public:
 	string getCrewId() const noexcept;
 	string getName() const noexcept;
 	CrewRole getRole() const noexcept;
+	string getRoleString() const noexcept;
 	CrewStatus getStatus() const noexcept;
+	string getStatusString() const noexcept;
 	double getTotalFlightHours() const noexcept;
 	
 	// Setters

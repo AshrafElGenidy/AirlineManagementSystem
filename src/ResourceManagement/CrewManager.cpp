@@ -627,6 +627,17 @@ vector<string> CrewManager::getAllCrewIds()
 	return crewIds;
 }
 
+vector<shared_ptr<Crew>> CrewManager::getAllCrew()
+{
+	vector<shared_ptr<Crew>> allCrew;
+	auto crewIds = getAllCrewIds();
+	for (const auto& crew : crewIds)
+	{
+		allCrew.push_back(getCrew(crew));
+	}
+	return allCrew;
+}
+
 bool CrewManager::crewExists(const string& crewId)
 {
 	try

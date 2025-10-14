@@ -61,6 +61,7 @@ public:
 	shared_ptr<Crew> getCrew(const string& crewId);
 	vector<shared_ptr<Crew>> getAvailableCrew(CrewRole role);
 	vector<string> getAllCrewIds();
+	vector<shared_ptr<Crew>> getAllCrew();
 	bool crewExists(const string& crewId);
 	
 	// Status update methods (for FlightManager to use)

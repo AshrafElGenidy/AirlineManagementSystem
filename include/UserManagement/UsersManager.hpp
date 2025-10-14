@@ -84,6 +84,7 @@ public:
 	// Query methods (for other classes to use)
 	shared_ptr<User> getUser(const string& username);
 	vector<string> getAllUsernames();
+	vector<shared_ptr<User>> getAllUsers();
 	bool userExists(const string& username);
 	
 	// Destructor

@@ -335,6 +335,11 @@ vector<shared_ptr<Reservation>> ReservationManager::getReservationsByFlight(cons
 	return results;
 }
 
+vector<shared_ptr<Reservation>> ReservationManager::getAllReservations()
+{
+	return loadAllReservations();
+}
+
 vector<shared_ptr<Reservation>> ReservationManager::loadAllReservations()
 {
 	vector<shared_ptr<Reservation>> results;

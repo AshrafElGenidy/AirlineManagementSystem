@@ -50,6 +50,7 @@ public:
 	string getFlightNumber() const noexcept;
 	string getSeatNumber() const noexcept;
 	ReservationStatus getStatus() const noexcept;
+	string getStringStatus() const noexcept;
 	string getBookingDate() const noexcept;
 	double getTotalCost() const noexcept;
 	string getBookedByAgent() const noexcept;

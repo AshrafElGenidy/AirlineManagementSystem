@@ -26,9 +26,23 @@ CrewRole Crew::getRole() const noexcept
 	return role;
 }
 
+string Crew::getRoleString() const noexcept
+{
+	if (role == CrewRole::PILOT) 			return "PILOT";
+	if (role == CrewRole::COPILOT) 			return "COPILOT";
+	if (role == CrewRole::FLIGHT_ATTENDANT) return "FLIGHT_ATTENDANT";
+}
+
 CrewStatus Crew::getStatus() const noexcept
 {
 	return status;
+}
+
+string Crew::getStatusString() const noexcept
+{
+	if (status == CrewStatus::ASSIGNED) 	return "ASSIGNED";
+	if (status == CrewStatus::AVAILABLE) 	return "AVAILABLE";
+	if (status == CrewStatus::ON_LEAVE) 	return "ON_LEAVE";
 }
 
 double Crew::getTotalFlightHours() const noexcept

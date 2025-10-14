@@ -61,6 +61,7 @@ public:
 	void viewReservations(const string& username, UserRole role);
 	vector<shared_ptr<Reservation>> getReservationsByPassenger(const string& passengerUsername);
 	vector<shared_ptr<Reservation>> getReservationsByFlight(const string& flightNumber);
+	vector<shared_ptr<Reservation>> getAllReservations();
 	
 	// Check-in operations (PASSENGER)
 	void checkIn(const string& passengerUsername);

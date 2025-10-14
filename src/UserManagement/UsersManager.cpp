@@ -599,6 +599,17 @@ vector<string> UsersManager::getAllUsernames()
 	return usernames;
 }
 
+vector<shared_ptr<User>> UsersManager::getAllUsers()
+{
+	vector<shared_ptr<User>> allUsers;
+	auto usernames = getAllUsernames();
+	for (const auto& user : usernames)
+	{
+		allUsers.push_back(getUser(user));
+	}
+	return allUsers;
+}
+
 bool UsersManager::userExists(const string& username)
 {
 	return db->entryExists(username);

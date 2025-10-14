@@ -40,6 +40,13 @@ ReservationStatus Reservation::getStatus() const noexcept
 	return status;
 }
 
+string Reservation::getStringStatus() const noexcept
+{
+	if (status == ReservationStatus::CONFIRMED) return "CONFIRMED";
+	if (status == ReservationStatus::COMPLETED) return "COMPLETED";
+	if (status == ReservationStatus::CANCELED)  return "CANCELED";
+}
+
 string Reservation::getBookingDate() const noexcept
 {
 	return bookingDate;
