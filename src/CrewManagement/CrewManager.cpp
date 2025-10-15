@@ -117,9 +117,8 @@ void CrewManager::addCrewMember()
 		
 		CrewRole role = getValidRole();
 		CrewStatus status = getValidStatus();
-		vector<string> certifications = getValidCertifications();
 		
-		auto newCrew = std::make_shared<Crew>(crewId, name, role, status, 0.0, certifications);
+		auto newCrew = std::shared_ptr<Crew>(new Crew(crewId, name, role, status, 0.0));
 		saveCrewToDatabase(newCrew);
 		
 		ui->printSuccess("Crew member " + crewId + " has been successfully added.");
@@ -159,19 +158,10 @@ void CrewManager::viewAllCrew()
 				string statusStr = crewData.value("status", "Available");
 				double hours = crewData.value("totalFlightHours", 0.0);
 				
-				vector<string> certifications;
-				if (crewData.contains("certifications") && crewData["certifications"].is_array())
-				{
-					for (const auto& cert : crewData["certifications"])
-					{
-						certifications.push_back(cert.get<string>());
-					}
-				}
-				
 				CrewRole role = Crew::stringToRole(roleStr);
 				CrewStatus status = Crew::stringToStatus(statusStr);
 				
-				crew.push_back(std::make_shared<Crew>(crewId, name, role, status, hours, certifications));
+				crew.push_back(std::shared_ptr<Crew>(new Crew(crewId, name, role, status, hours)));
 			}
 			catch (const std::exception& e)
 			{
@@ -359,19 +349,10 @@ shared_ptr<Crew> CrewManager::loadCrewFromDatabase(const string& crewId)
 		string statusStr = crewData.value("status", "Available");
 		double hours = crewData.value("totalFlightHours", 0.0);
 		
-		vector<string> certifications;
-		if (crewData.contains("certifications") && crewData["certifications"].is_array())
-		{
-			for (const auto& cert : crewData["certifications"])
-			{
-				certifications.push_back(cert.get<string>());
-			}
-		}
-		
 		CrewRole role = Crew::stringToRole(roleStr);
 		CrewStatus status = Crew::stringToStatus(statusStr);
 		
-		return std::make_shared<Crew>(crewId, name, role, status, hours, certifications);
+		return std::shared_ptr<Crew>(new Crew(crewId, name, role, status, hours));
 	}
 	catch (const std::exception& e)
 	{
@@ -516,40 +497,6 @@ CrewStatus CrewManager::getValidStatus()
 	}
 }
 
-vector<string> CrewManager::getValidCertifications()
-{
-	vector<string> certifications;
-	
-	ui->println("\nAdd Aircraft Certifications (enter empty line to finish):");
-	
-	while (true)
-	{
-		try
-		{
-			string input = ui->getString("Enter certification (e.g., Boeing-737): ");
-			
-			if (input.empty())
-				break;
-			
-			if (std::find(certifications.begin(), certifications.end(), input) == certifications.end())
-			{
-				certifications.push_back(input);
-				ui->printSuccess("Certification '" + input + "' added.");
-			}
-			else
-			{
-				ui->printWarning("This certification is already added.");
-			}
-		}
-		catch (const UIException& e)
-		{
-			ui->printError(e.what());
-		}
-	}
-	
-	return certifications;
-}
-
 // ==================== Query Methods ====================
 
 shared_ptr<Crew> CrewManager::getCrew(const string& crewId)
@@ -574,18 +521,9 @@ vector<shared_ptr<Crew>> CrewManager::getAvailableCrew(CrewRole role)
 				string statusStr = crewData.value("status", "Available");
 				double hours = crewData.value("totalFlightHours", 0.0);
 				
-				vector<string> certifications;
-				if (crewData.contains("certifications") && crewData["certifications"].is_array())
-				{
-					for (const auto& cert : crewData["certifications"])
-					{
-						certifications.push_back(cert.get<string>());
-					}
-				}
-				
 				CrewRole crewRole = Crew::stringToRole(roleStr);
 				CrewStatus crewStatus = Crew::stringToStatus(statusStr);
-				auto crew = std::make_shared<Crew>(crewId, name, crewRole, crewStatus, hours, certifications);
+				auto crew = std::shared_ptr<Crew>(new Crew(crewId, name, crewRole, crewStatus, hours));
 				
 				if (crew->getRole() == role &&
 					crew->getStatus() == CrewStatus::AVAILABLE)

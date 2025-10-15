@@ -30,9 +30,6 @@ private:
 	         int totalSeats, const string& seatLayout, int rows, int fleetCount,
 	         const string& status);
 	
-	friend class AircraftManager;
-	friend class AircraftCreator;
-	
 public:
 	// Getters
 	string getAircraftType() const noexcept;
@@ -55,6 +52,9 @@ public:
 	
 	// Destructor
 	virtual ~Aircraft() noexcept = default;
+
+	friend class AircraftManager;
+	friend class AircraftCreator;
 };
 
 // ==================== Aircraft Exception Class ====================

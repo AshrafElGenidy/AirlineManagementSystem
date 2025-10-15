@@ -25,6 +25,7 @@ Administrator::Administrator(const string& username, const string& name, const s
 void Administrator::userMenu()
 {
 	UserInterface* ui = UserInterface::getInstance();
+	ReportGenerator repGen;
 	
 	while (true)
 	{
@@ -60,7 +61,6 @@ void Administrator::userMenu()
 					CrewManager::getInstance()->manageCrew();
 					break;
 				case 5:
-					ReportGenerator repGen;
 					repGen.generateReports();
 					break;
 				case 6:

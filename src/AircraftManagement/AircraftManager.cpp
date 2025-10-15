@@ -343,7 +343,7 @@ void AircraftManager::manageMaintenance()
 		
 		ui->displayMenu("Maintenance for " + selectedAircraftType, options);
 		
-		int choice = ui->getChoice("Enter choice: ", 1, 6);
+		choice = ui->getChoice("Enter choice: ", 1, 6);
 		
 		switch (choice)
 		{

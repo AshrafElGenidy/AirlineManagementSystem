@@ -13,11 +13,6 @@ using std::vector;
 using std::unique_ptr;
 using std::shared_ptr;
 
-static constexpr int MIN_USERNAME_LENGTH = 3;
-static constexpr int MAX_USERNAME_LENGTH = 20;
-static constexpr int MIN_PASSWORD_LENGTH = 8;
-static constexpr int MAX_PASSWORD_LENGTH = 30;
-
 // ==================== UsersManager ====================
 
 class UsersManager
@@ -36,11 +31,6 @@ private:
 	void viewAllUsers();
 	void modifyUserInfo();
 	void deleteUser();
-	
-	// Helper methods
-	shared_ptr<User> loadUserFromDatabase(const string& username);
-	void saveUserToDatabase(const shared_ptr<User>& user);
-	void deleteUserFromDatabase(const string& username);
 	
 	// Helper to display users in table format
 	void displayUsersTable(const vector<shared_ptr<User>>& users, const string& title = "");

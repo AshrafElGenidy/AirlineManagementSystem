@@ -178,13 +178,13 @@ void UsersManager::createUser(const string& username, const string& password, Us
 	switch (role)
 	{
 		case UserRole::ADMINISTRATOR:
-			user = std::make_shared<User>(new Administrator(username, name, email, phoneNumber, role));
+			user = std::shared_ptr<User>(new Administrator(username, name, email, phoneNumber, role));
 			break;
 		case UserRole::BOOKING_AGENT:
-			user = std::make_shared<User>(new BookingAgent(username, name, email, phoneNumber, role));
+			user = std::shared_ptr<User>(new BookingAgent(username, name, email, phoneNumber, role));
 			break;
 		case UserRole::PASSENGER:
-			user = std::make_shared<User>(new Passenger(username, name, email, phoneNumber, role));
+			user = std::shared_ptr<User>(new Passenger(username, name, email, phoneNumber, role));
 			break;
 		default:
 			throw UserException(UserErrorCode::INVALID_INPUTS);
@@ -223,13 +223,13 @@ shared_ptr<User> UsersManager::loadUserFromDatabase(const string& username)
 	switch (role)
 	{
 		case UserRole::ADMINISTRATOR:
-			user = std::make_shared<User>(new Administrator(username, name, email, phoneNumber, role));
+			user = std::shared_ptr<User>(new Administrator(username, name, email, phoneNumber, role));
 			break;
 		case UserRole::BOOKING_AGENT:
-			user = std::make_shared<User>(new BookingAgent(username, name, email, phoneNumber, role));
+			user = std::shared_ptr<User>(new BookingAgent(username, name, email, phoneNumber, role));
 			break;
 		case UserRole::PASSENGER:
-			user = std::make_shared<User>(new Passenger(username, name, email, phoneNumber, role));
+			user = std::shared_ptr<User>(new Passenger(username, name, email, phoneNumber, role));
 			break;
 		default:
 			throw UserException(UserErrorCode::DATABASE_ERROR);

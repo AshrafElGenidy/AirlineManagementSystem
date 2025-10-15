@@ -1,7 +1,7 @@
 CXX = g++
 
 # Find all subdirectories in include
-INC_DIRS = $(wildcard include/*/)
+INC_DIRS = $(filter %/,$(wildcard include/*/))
 INC_FLAGS = -Iinclude $(addprefix -I,$(INC_DIRS))
 
 CXXFLAGS = -std=c++17 -Wall $(INC_FLAGS)
@@ -27,3 +27,5 @@ clean:
 
 run: $(TARGET)
 	$(TARGET).exe
+
+.PHONY: run, clean, all, build 

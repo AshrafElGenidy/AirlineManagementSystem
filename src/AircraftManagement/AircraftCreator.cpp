@@ -120,8 +120,7 @@ shared_ptr<Aircraft> AircraftCreator::createNewAircraft()
 		int fleetCount = getValidFleetCount();
 		string status = getValidStatus();
 		
-		return std::make_shared<Aircraft>(aircraftType, manufacturer, model,
-										totalSeats, seatLayout, rows, fleetCount, status);
+		return std::shared_ptr<Aircraft>(new Aircraft(aircraftType, manufacturer, model, totalSeats, seatLayout, rows, fleetCount, status));
 	}
 	catch (const UIException& e)
 	{
@@ -355,6 +354,5 @@ shared_ptr<Aircraft> AircraftCreator::createFromJson(const json& data)
 	int fleetCount = data.value("fleetCount", 0);
 	string status = data.value("status", "");
 	
-	return std::make_shared<Aircraft>(aircraftType, manufacturer, model,
-									 totalSeats, seatLayout, rows, fleetCount, status);
+	return std::shared_ptr<Aircraft>(new Aircraft(aircraftType, manufacturer, model, totalSeats, seatLayout, rows, fleetCount, status));
 }

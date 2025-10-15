@@ -622,7 +622,7 @@ void FlightManager::displayFlightsTable(const vector<shared_ptr<Flight>>& flight
 	ui->displayTable(headers, rows);
 }
 
-void updateCrewFlightHours(const shared_ptr<Flight>& flight)
+void FlightManager::updateCrewFlightHours(const shared_ptr<Flight>& flight)
 {
 	double flightDuration = flight->getFlightDuration();
     vector<string> crewIds = flight->getAssignedCrew();

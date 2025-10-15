@@ -132,8 +132,8 @@ shared_ptr<Flight> FlightCreator::createNewFlight()
 		string status = getValidStatus();
 		double price = getValidPrice();
 		
-		return std::make_shared<Flight>(flightNumber, origin, destination, departureDateTime, arrivalDateTime,
-						aircraftType, status, price, "N/A", "N/A");
+		return std::shared_ptr<Flight>(new Flight(flightNumber, origin, destination, departureDateTime, arrivalDateTime,
+						aircraftType, status, price, "N/A", "N/A"));
 	}
 	catch (const UIException& e)
 	{
@@ -406,6 +406,6 @@ shared_ptr<Flight> FlightCreator::createFromJson(const json& data)
     }
 	
 	// Create and return Flight
-	return std::make_shared<Flight>(flightNumber, origin, destination, departureDateTime, arrivalDateTime,
-					aircraftType, status, price, gate, boardingTime, reservedSeats, assignedCrewIds);
+	return std::shared_ptr<Flight>(new Flight(flightNumber, origin, destination, departureDateTime, arrivalDateTime,
+					aircraftType, status, price, gate, boardingTime, reservedSeats, assignedCrewIds));
 }

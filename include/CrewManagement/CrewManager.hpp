@@ -47,9 +47,6 @@ private:
 	// Helper to get crew status choice from user
 	CrewStatus getValidStatus();
 	
-	// Helper to get certifications from user
-	vector<string> getValidCertifications();
-	
 public:
 	// Singleton accessor
 	static CrewManager* getInstance();
