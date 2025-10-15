@@ -6,385 +6,110 @@ skinparam linetype ortho
 skinparam backgroundColor #FEFEFE
 skinparam roundcorner 10
 skinparam shadowing false
+skinparam nodesep 50
+skinparam ranksep 50
+skinparam minClassWidth 50
 
 ' Class styling
 skinparam class {
   BackgroundColor<<Abstract>> #E8F5E9
-  BackgroundColor<<Enum>> #FFF3E0
   BackgroundColor<<Singleton>> #E3F2FD
   BackgroundColor<<Entity>> #F3E5F5
   BackgroundColor<<Controller>> #FFE0B2
   BackgroundColor<<Utility>> #E0F2F1
+  BackgroundColor<<Builder>> #FFF9C4
   BorderColor #424242
   ArrowColor #616161
   FontName Arial
-  FontSize 11
+  FontSize 9
 }
 
-' Spread out layout
-skinparam nodesep 120
-skinparam ranksep 150
-skinparam packageStyle rectangle
-skinparam padding 5
-skinparam minClassWidth 50
+' Entry Point
+class AirlineManagementSystem <<Singleton>> <<Controller>>
 
-' ==================== User Management (Top Left) ====================
+' User Management
+abstract class User <<Abstract>>
+class Administrator <<Entity>>
+class BookingAgent <<Entity>>
+class Passenger <<Entity>>
+class UsersManager <<Singleton>> <<Controller>>
 
-package "User Management" {
-  enum UserRole <<Enum>> {
-    ADMINISTRATOR
-    BOOKING_AGENT
-    PASSENGER
-  }
+' Aircraft Management
+class Aircraft <<Entity>>
+class AircraftCreator <<Builder>>
+class AircraftManager <<Singleton>> <<Controller>>
+class Maintenance <<Singleton>> <<Controller>>
 
-  abstract class User <<Abstract>> {
-    # userId: string
-    # username: string
-    # passwordHash: string
-    # role: UserRole
-    # email: string
-    # phoneNumber: string
-    # name: string
-  }
+' Crew Management
+class Crew <<Entity>>
+class CrewManager <<Singleton>> <<Controller>>
 
-  class Administrator {
-    - adminLevel: int
-  }
+' Flight Management
+class SeatMap <<Utility>>
+class Flight <<Entity>>
+class FlightCreator <<Builder>>
+class FlightManager <<Singleton>> <<Controller>>
 
-  class BookingAgent {
-    - agentId: string
-    - commissionRate: double
-    - totalBookings: int
-  }
+' Reservation Management
+class Reservation <<Entity>>
+class ReservationManager <<Singleton>> <<Controller>>
 
-  class Passenger {
-    - passengerId: string
-    - dateOfBirth: string
-    - passportNumber: string
-    - nationality: string
-    - travelHistory: vector<Reservation*>
-    - loyaltyPoints: int
-    - preferences: PassengerPreferences
-  }
+' Utils
+class Database <<Utility>>
+class UserInterface <<Utility>>
 
-  class PassengerPreferences {
-    + seatPreference: string
-    + mealPreference: string
-    + specialRequests: string
-  }
-  
-  User <|-- Administrator
-  User <|-- BookingAgent
-  User <|-- Passenger
-  User --> UserRole
-  Passenger --> PassengerPreferences
-}
+' Reporting
+class ReportGenerator <<Controller>>
 
-' ==================== System Core (Top Center) ====================
+' Relationships
+Administrator --|> User
+BookingAgent --|> User
+Passenger --|> User
 
-package "System Core" {
-  class SystemController <<Singleton>> <<Controller>> {
-    - {static} instance: SystemController*
-    - users: map<string, User*>
-    - flights: map<string, Flight*>
-    - aircraft: map<string, Aircraft*>
-    - reservations: map<string, Reservation*>
-    - crewMembers: map<string, CrewMember*>
-    - pilots: vector<Pilot*>
-    - flightAttendants: vector<FlightAttendant*>
-    - currentUser: User*
-    - reportGenerator: ReportGenerator*
-    - checkInSystem: CheckInSystem*
-  }
-}
+UsersManager --> User : creates
 
-' ==================== Booking & Check-In (Top Right) ====================
+AircraftCreator --> Aircraft : creates
+AircraftManager --> Aircraft : manages
+AircraftManager --> AircraftCreator : uses
+AircraftManager --> Maintenance : coordinates
 
-package "Booking & Check-In" {
-  enum ReservationStatus <<Enum>> {
-    PENDING
-    CONFIRMED
-    CHECKED_IN
-    BOARDED
-    COMPLETED
-    CANCELED
-  }
+CrewManager --> Crew : manages
 
-  class Reservation <<Entity>> {
-    - reservationId: string
-    - passengerId: string
-    - passengerName: string
-    - flightNumber: string
-    - seatNumber: string
-    - reservationStatus: ReservationStatus
-    - bookingDate: string
-    - payment: Payment*
-    - totalCost: double
-  }
+FlightCreator --> Flight : creates
+FlightCreator --> SeatMap : uses
+FlightManager --> Flight : manages
+FlightManager --> FlightCreator : uses
+FlightManager --> SeatMap : uses
 
-  enum PaymentMethod <<Enum>> {
-    CREDIT_CARD
-    CASH
-    PAYPAL
-  }
+ReservationManager --> Reservation : manages
 
-  enum TransactionStatus <<Enum>> {
-    PENDING
-    COMPLETED
-    FAILED
-    REFUNDED
-  }
+AirlineManagementSystem --> UsersManager : uses
+AirlineManagementSystem --> Administrator : delegates
+AirlineManagementSystem --> BookingAgent : delegates
+AirlineManagementSystem --> Passenger : delegates
 
-  class Payment {
-    - paymentId: string
-    - amount: double
-    - paymentMethod: PaymentMethod
-    - paymentDetails: string
-    - transactionStatus: TransactionStatus
-  }
+Administrator --> AircraftManager : accesses
+Administrator --> FlightManager : accesses
+Administrator --> CrewManager : accesses
+Administrator --> ReservationManager : accesses
+Administrator --> ReportGenerator : uses
 
-  class BoardingPass {
-    - boardingPassId: string
-    - reservationId: string
-    - passengerName: string
-    - flightNumber: string
-    - origin: string
-    - destination: string
-    - departureDateTime: string
-    - seatNumber: string
-    - gate: string
-    - boardingTime: string
-  }
+BookingAgent --> FlightManager : accesses
+BookingAgent --> ReservationManager : accesses
+BookingAgent --> UsersManager : creates passengers
 
-  class CheckInSystem {
-  }
-  
-  Reservation --> ReservationStatus
-  Reservation "1" --> "0..1" Payment : paid by
-  Payment --> PaymentMethod
-  Payment --> TransactionStatus
-  BoardingPass "1" --> "1" Reservation : generated from
-  CheckInSystem ..> BoardingPass : creates
-}
+Passenger --> FlightManager : accesses
+Passenger --> ReservationManager : accesses
 
-' ==================== Reports & Analytics (Bottom Left) ====================
+FlightManager --> AircraftManager : queries aircraft
+FlightManager --> CrewManager : assigns crew
 
-package "Reports & Analytics" {
-  class ReportGenerator <<Controller>> {
-    - systemController: SystemController*
-  }
+ReservationManager --> FlightManager : reserves seats
 
-  class OperationalReport {
-    - reportId: string
-    - month: string
-    - year: string
-    - totalFlightsScheduled: int
-    - flightsCompleted: int
-    - flightsDelayed: int
-    - flightsCanceled: int
-    - totalReservations: int
-    - totalRevenue: double
-    - flightPerformance: map<string, FlightStats>
-  }
-
-  class FlightStats {
-    + flightNumber: string
-    + status: string
-    + totalBookings: int
-    + revenue: double
-  }
-
-  class MaintenanceReport {
-    - totalMaintenanceActivities: int
-    - totalCost: double
-    - aircraftDowntime: map<string, double>
-  }
-
-  class FinancialReport {
-    - period: string
-    - totalRevenue: double
-    - totalRefunds: double
-    - netRevenue: double
-  }
-  
-  ReportGenerator ..> OperationalReport : creates
-  ReportGenerator ..> MaintenanceReport : creates
-  ReportGenerator ..> FinancialReport : creates
-  OperationalReport --> FlightStats
-}
-
-' ==================== Flight Management (Bottom Center) ====================
-
-package "Flight Management" {
-  enum FlightStatus <<Enum>> {
-    SCHEDULED
-    DELAYED
-    BOARDING
-    DEPARTED
-    ARRIVED
-    CANCELED
-  }
-
-  class Flight <<Entity>> {
-    - flightNumber: string
-    - origin: string
-    - destination: string
-    - departureDateTime: string
-    - arrivalDateTime: string
-    - aircraftType: string
-    - status: FlightStatus
-    - price: double
-    - assignedPilot: Pilot*
-    - assignedFlightAttendant: FlightAttendant*
-    - seatMap: SeatMap*
-    - totalSeats: int
-    - gate: string
-    - boardingTime: string
-  }
-
-  class SearchCriteria {
-    + origin: string
-    + destination: string
-    + departureDate: string
-    + maxPrice: double
-  }
-
-  class SeatMap {
-    - totalSeats: int
-    - seats: map<string, Seat*>
-  }
-
-  class Seat {
-    - seatNumber: string
-    - seatClass: SeatClass
-    - isOccupied: bool
-  }
-
-  enum SeatClass <<Enum>> {
-    ECONOMY
-    BUSINESS
-    FIRST_CLASS
-  }
-  
-  Flight --> FlightStatus
-  Flight "1" --> "1" SeatMap : has
-  SeatMap "1" --> "*" Seat : contains
-  Seat --> SeatClass
-}
-
-' ==================== Aircraft, Crew & Maintenance (Bottom Right) ====================
-
-package "Aircraft, Crew & Maintenance" {
-  enum AircraftStatus <<Enum>> {
-    AVAILABLE
-    IN_FLIGHT
-    MAINTENANCE
-    OUT_OF_SERVICE
-  }
-
-  class Aircraft <<Entity>> {
-    - aircraftId: string
-    - aircraftType: string
-    - manufacturer: string
-    - model: string
-    - totalSeats: int
-    - status: AircraftStatus
-    - lastMaintenanceDate: string
-    - nextMaintenanceDate: string
-    - flightHours: double
-    - maintenanceLogs: vector<MaintenanceLog*>
-  }
-
-  abstract class CrewMember <<Abstract>> {
-    # crewId: string
-    # name: string
-    # licenseNumber: string
-    # flightHours: double
-    # maxFlightHours: double
-  }
-
-  class Pilot {
-    - rank: string
-  }
-
-  class FlightAttendant {
-    - languages: vector<string>
-  }
-
-  enum MaintenanceType <<Enum>> {
-    SCHEDULED
-    UNSCHEDULED
-    INSPECTION
-    REPAIR
-    OVERHAUL
-  }
-
-  class MaintenanceLog {
-    - logId: string
-    - aircraftId: string
-    - maintenanceDate: string
-    - maintenanceType: MaintenanceType
-    - description: string
-    - partsReplaced: vector<string>
-    - technician: string
-    - cost: double
-  }
-  
-  Aircraft --> AircraftStatus
-  Aircraft "1" --> "*" MaintenanceLog : has
-  CrewMember <|-- Pilot
-  CrewMember <|-- FlightAttendant
-  MaintenanceLog --> MaintenanceType
-}
-
-' ==================== Cross-Package Relationships ====================
-
-' SystemController manages everything
-SystemController "1" --> "*" User : manages
-SystemController "1" --> "*" Flight : manages
-SystemController "1" --> "*" Aircraft : manages
-SystemController "1" --> "*" Reservation : manages
-SystemController "1" --> "*" CrewMember : manages
-SystemController "1" --> "1" ReportGenerator : uses
-SystemController "1" --> "1" CheckInSystem : uses
-
-' Flight to Crew
-Flight "1" --> "0..1" Pilot : assigned
-Flight "1" --> "0..1" FlightAttendant : assigned
-
-' Report relationships
-ReportGenerator --> SystemController : queries
-
-' User actions through SystemController
-Administrator ..> SystemController : controls
-BookingAgent ..> SystemController : uses
-Passenger ..> SystemController : uses
-
-note right of SystemController
-  **Singleton Pattern**
-  Central orchestrator for all operations
-  Handles all menu flows and business logic
-  Data automatically persisted on changes
-  using nlohmann JSON library
-end note
-
-note bottom of User
-  **Abstract Interface**
-  Pure virtual methods defined
-  in derived classes
-end note
-
-note top of Flight
-  **Self-Managing Entity**
-  - Validates own data
-  - Throws exceptions on invalid input
-  - Handles JSON serialization
-end note
-
-note bottom of ReportGenerator
-  **Isolated Reporting**
-  Minimal coupling with system
-  Queries SystemController for data
-end note
+ReportGenerator --> FlightManager : queries
+ReportGenerator --> ReservationManager : queries
+ReportGenerator --> CrewManager : queries
+ReportGenerator --> AircraftManager : queries
+ReportGenerator --> Maintenance : queries
 
 @enduml
