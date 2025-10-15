@@ -4,6 +4,7 @@
 #include "AircraftManager.hpp"
 #include "FlightManager.hpp"
 #include "SeatMap.hpp"
+#include "Maintenance.hpp"
 
 // Static member initialization
 AircraftManager* AircraftManager::instance = nullptr;
@@ -41,6 +42,7 @@ void AircraftManager::manageAircraft()
 			"View All Aircraft Types",
 			"Update Aircraft Type",
 			"Remove Aircraft Type",
+			"Manage Maintenance",
 			"Back to Main Menu"
 		};
 		
@@ -48,7 +50,7 @@ void AircraftManager::manageAircraft()
 		
 		try
 		{
-			int choice = ui->getChoice("Enter choice: ", 1, 5);
+			int choice = ui->getChoice("Enter choice: ", 1, 6);
 			
 			switch (choice)
 			{
@@ -65,6 +67,9 @@ void AircraftManager::manageAircraft()
 					removeAircraft();
 					break;
 				case 5:
+					manageMaintenance();
+					break;
+				case 6:
 					return;
 				default:
 					ui->printError("Invalid choice.");
@@ -295,6 +300,142 @@ void AircraftManager::removeAircraft()
 	}
 	
 	ui->pauseScreen();
+}
+
+void AircraftManager::manageMaintenance()
+{
+	ui->clearScreen();
+	ui->printHeader("Manage Maintenance");
+
+	Maintenance* maintenance = Maintenance::getInstance();	
+	vector<string> aircraftTypes = getAllAircraftTypes();
+	
+	if (aircraftTypes.empty())
+	{
+		ui->printError("No aircraft types available.");
+		ui->pauseScreen();
+		return;
+	}
+	
+	// Display aircraft types for selection
+	ui->println("\nAvailable Aircraft Types:");
+	for (size_t i = 0; i < aircraftTypes.size(); ++i)
+	{
+		ui->println(std::to_string(i + 1) + ". " + aircraftTypes[i]);
+	}
+	ui->println(std::to_string(aircraftTypes.size() + 1) + ". Back to Manage Aircraft Menu\n");
+	
+	try
+	{
+		int choice = ui->getChoice("Select Aircraft Type: ", 1, static_cast<int>(aircraftTypes.size()) + 1);
+		string selectedAircraftType = aircraftTypes[choice - 1];
+
+		ui->clearScreen();
+		
+		vector<string> options = {
+			"Schedule Maintenance",
+			"View All Maintenance",
+			"View Upcoming Maintenance",
+			"Complete Maintenance",
+			"Cancel Maintenance",
+			"Back to Aircraft Selection"
+		};
+		
+		ui->displayMenu("Maintenance for " + selectedAircraftType, options);
+		
+		int choice = ui->getChoice("Enter choice: ", 1, 6);
+		
+		switch (choice)
+		{
+			case 1:
+			{
+				MaintenanceResult result = maintenance->scheduleMaintenance(selectedAircraftType);
+				
+				if (result.success && !result.newAircraftStatus.empty())
+				{
+					auto aircraft = getAircraft(selectedAircraftType);
+					if (aircraft)
+					{
+						aircraft->setStatus(result.newAircraftStatus);
+						saveAircraftToDatabase(aircraft);
+					}
+					ui->printSuccess(result.message);
+				}
+				else if (!result.success)
+				{
+					ui->printError(result.message);
+				}
+				
+				ui->pauseScreen();
+				break;
+			}
+			case 2:
+			{
+				maintenance->displayAllMaintenance(selectedAircraftType);
+				break;
+			}
+			case 3:
+			{
+				maintenance->displayUpcomingMaintenance(selectedAircraftType);
+				break;
+			}
+			case 4:
+			{
+				MaintenanceResult result = maintenance->completeMaintenance(selectedAircraftType);
+				
+				if (result.success && !result.newAircraftStatus.empty())
+				{
+					auto aircraft = getAircraft(selectedAircraftType);
+					if (aircraft)
+					{
+						aircraft->setStatus(result.newAircraftStatus);
+						saveAircraftToDatabase(aircraft);
+					}
+					ui->printSuccess(result.message);
+				}
+				else if (!result.success)
+				{
+					ui->printError(result.message);
+				}
+				
+				ui->pauseScreen();
+				break;
+			}
+			case 5:
+			{
+				MaintenanceResult result = maintenance->cancelMaintenance(selectedAircraftType);
+				
+				if (result.success && !result.newAircraftStatus.empty())
+				{
+					auto aircraft = getAircraft(selectedAircraftType);
+					if (aircraft)
+					{
+						aircraft->setStatus(result.newAircraftStatus);
+						saveAircraftToDatabase(aircraft);
+					}
+					ui->printSuccess(result.message);
+				}
+				else if (!result.success)
+				{
+					ui->printError(result.message);
+				}
+				
+				ui->pauseScreen();
+				break;
+			}
+			case 6:
+				return;
+			default:
+				ui->printError("Invalid choice.");
+				ui->pauseScreen();
+				break;
+		}
+	}
+	catch (const UIException& e)
+	{
+		ui->printError(e.what());
+		ui->pauseScreen();
+	}
 }
 
 // ==================== Helper Methods ====================

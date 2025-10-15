@@ -33,6 +33,7 @@ private:
 	void viewAllAircraft();
 	void updateAircraft();
 	void removeAircraft();
+	void manageMaintenance();
 	
 	// Helper methods
 	shared_ptr<Aircraft> loadAircraftFromDatabase(const string& aircraftType);
