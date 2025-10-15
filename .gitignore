@@ -1,1 +1,5 @@
 /.vscode/settings.json
+*.o
+*.exe
+/Databases/*.json
+/Reports/*.txt
