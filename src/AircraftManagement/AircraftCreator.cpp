@@ -118,7 +118,7 @@ shared_ptr<Aircraft> AircraftCreator::createNewAircraft()
 		string seatLayout = getValidSeatLayout();
 		int rows = getValidRows();
 		int fleetCount = getValidFleetCount();
-		string status = getValidStatus();
+		string status = "Available";
 		
 		return std::shared_ptr<Aircraft>(new Aircraft(aircraftType, manufacturer, model, totalSeats, seatLayout, rows, fleetCount, status));
 	}
@@ -298,29 +298,6 @@ int AircraftCreator::getValidFleetCount()
 	}
 }
 
-string AircraftCreator::getValidStatus()
-{
-	vector<string> statusOptions = {
-		"Available",
-		"In Flight",
-		"Maintenance",
-		"Out of Service"
-	};
-	
-	ui->displayMenu("Select Aircraft Status", statusOptions);
-	
-	try
-	{
-		int choice = ui->getChoice("Enter status: ", 1, static_cast<int>(statusOptions.size()));
-		return statusOptions[choice - 1];
-	}
-	catch (const UIException& e)
-	{
-		ui->printError(e.what());
-		return "Available";  // Default
-	}
-}
-
 // ==================== JSON Serialization ====================
 
 json AircraftCreator::toJson(const shared_ptr<Aircraft>& aircraft)
@@ -342,10 +319,9 @@ json AircraftCreator::toJson(const shared_ptr<Aircraft>& aircraft)
 	return aircraftData;
 }
 
-shared_ptr<Aircraft> AircraftCreator::createFromJson(const json& data)
+shared_ptr<Aircraft> AircraftCreator::createFromJson(const string& aircraftType, const json& data)
 {
 	// Extract aircraftType from the key, manufacturer from data
-	string aircraftType = data.value("aircraftType", "");
 	string manufacturer = data.value("manufacturer", "");
 	string model = data.value("model", "");
 	int totalSeats = data.value("totalSeats", 0);

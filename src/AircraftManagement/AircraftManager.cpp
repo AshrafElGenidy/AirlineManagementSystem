@@ -145,7 +145,7 @@ void AircraftManager::viewAllAircraft()
 		{
 			try
 			{
-				aircraft.push_back(creator->createFromJson(aircraftData));
+				aircraft.push_back(creator->createFromJson(aircraftType, aircraftData));
 			}
 			catch (const std::exception& e)
 			{
@@ -450,7 +450,7 @@ shared_ptr<Aircraft> AircraftManager::loadAircraftFromDatabase(const string& air
 	try
 	{
 		json aircraftData = db->getEntry(aircraftType);
-		return creator->createFromJson(aircraftData);
+		return creator->createFromJson(aircraftType, aircraftData);
 	}
 	catch (const std::exception& e)
 	{

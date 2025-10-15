@@ -48,7 +48,7 @@ private:
 	void deleteUserFromDatabase(const string& username);
 	
 	// System initialization - creates first admin if needed
-	void initialize();
+	void initializeSystem();
 	
 	// Validation and utility methods
 	static bool validateUsername(const string& username);
@@ -70,6 +70,7 @@ public:
 	
 	// Main menu
 	void manageUsers();
+	void createNewPassenger();
 	
 	// Query methods (for other classes to use)
 	shared_ptr<User> getUser(const string& username);

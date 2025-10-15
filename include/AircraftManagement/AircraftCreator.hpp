@@ -66,7 +66,6 @@ private:
 	int getValidSeatCount();
 	int getValidRows();
 	int getValidFleetCount();
-	string getValidStatus();
 	
 public:
 	AircraftCreator();
@@ -75,7 +74,7 @@ public:
 	shared_ptr<Aircraft> createNewAircraft();
 	
 	// Create aircraft from JSON data (deserialization)
-	shared_ptr<Aircraft> createFromJson(const json& data);
+	shared_ptr<Aircraft> createFromJson(const string& aircraftType, const json& data);
 	
 	// Serialize aircraft to JSON
 	json toJson(const shared_ptr<Aircraft>& aircraft);

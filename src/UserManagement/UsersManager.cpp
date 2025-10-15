@@ -28,6 +28,7 @@ UsersManager::UsersManager()
 {
 	ui = UserInterface::getInstance();
 	db = std::make_unique<Database>("Users");
+	initializeSystem();
 }
 
 // ==================== Destructor ====================
@@ -74,7 +75,7 @@ string UsersManager::hashPassword(const string& password)
 
 // ==================== System Initialization ====================
 
-void UsersManager::initialize()
+void UsersManager::initializeSystem()
 {
 	json usersData = db->loadAll();
 	
@@ -387,6 +388,29 @@ void UsersManager::updateUserDetails(const shared_ptr<User>& user)
 	}
 }
 
+void UsersManager::createNewPassenger()
+{
+	ui->clearScreen();
+	ui->printHeader("REGISTER NEW PASSENGER");
+	
+	try
+	{
+		string username = ui->getString("Enter username: ");
+		string password = ui->getPassword("Enter password: ");
+		
+		// Always create as PASSENGER role
+		createUser(username, password, UserRole::PASSENGER);
+		
+		ui->printSuccess("Passenger account registered successfully!");
+	}
+	catch (const std::exception& e)
+	{
+		ui->printError(string(e.what()));
+	}
+	
+	ui->pauseScreen();
+}
+
 void UsersManager::createNewUser()
 {
 	ui->clearScreen();
@@ -402,17 +426,9 @@ void UsersManager::createNewUser()
 		
 		ui->printSuccess("User created successfully!");
 	}
-	catch (const UserException& e)
-	{
-		ui->printError(string(e.what()));
-	}
-	catch (const UIException& e)
-	{
-		ui->printError(string(e.what()));
-	}
 	catch (const std::exception& e)
 	{
-		ui->printError("Error: " + string(e.what()));
+		ui->printError(string(e.what()));
 	}
 	
 	ui->pauseScreen();

@@ -75,7 +75,7 @@ public:
 	shared_ptr<Flight> createNewFlight();
 	
 	// Create flight from JSON data (deserialization)
-	shared_ptr<Flight> createFromJson(const json& data);
+	shared_ptr<Flight> createFromJson(const string &flightNumber, const json& data);
 	
 	// Serialize flight to JSON
 	json toJson(const shared_ptr<Flight>& flight);

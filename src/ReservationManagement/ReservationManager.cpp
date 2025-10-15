@@ -89,7 +89,7 @@ void ReservationManager::createReservation(const string& agentUsername)
 		ui->println("\nProcessing payment...");
 		ui->println("Payment successful!");
 		
-		if (!flightObj->reserveSeat(seat))
+		if (!FlightManager::getInstance()->reserveSeatForFlight(flight, seat))
 			throw ReservationException(ReservationErrorCode::SEAT_OPERATION_FAILED);
 		
 		string resId = "RES_" + std::to_string(db->getEntryCount() + 1);
@@ -157,10 +157,15 @@ void ReservationManager::updateOrCancel(bool isModify)
 				return;
 			}
 			
-			flight->releaseSeat(res->getSeatNumber());
-			if (!flight->reserveSeat(newSeat))
+			if (!FlightManager::getInstance()->releaseSeatForFlight(res->getFlightNumber(), res->getSeatNumber()))
 			{
-				flight->reserveSeat(res->getSeatNumber());
+				throw ReservationException(ReservationErrorCode::SEAT_OPERATION_FAILED);
+			}
+
+			if (!FlightManager::getInstance()->reserveSeatForFlight(res->getFlightNumber(), newSeat))
+			{
+				// Rollback: re-reserve the old seat
+				FlightManager::getInstance()->reserveSeatForFlight(res->getFlightNumber(), res->getSeatNumber());
 				throw ReservationException(ReservationErrorCode::SEAT_OPERATION_FAILED);
 			}
 			
@@ -178,8 +183,7 @@ void ReservationManager::updateOrCancel(bool isModify)
 				return;
 			}
 			
-			auto flight = FlightManager::getInstance()->getFlight(res->getFlightNumber());
-			if (flight) flight->releaseSeat(res->getSeatNumber());
+			FlightManager::getInstance()->releaseSeatForFlight(res->getFlightNumber(), res->getSeatNumber());
 			
 			res->setStatus(ReservationStatus::CANCELED);
 			saveReservationToDatabase(res);

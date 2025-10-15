@@ -44,9 +44,6 @@ private:
 	// Helper to get crew role choice from user
 	CrewRole getValidRole();
 	
-	// Helper to get crew status choice from user
-	CrewStatus getValidStatus();
-	
 public:
 	// Singleton accessor
 	static CrewManager* getInstance();

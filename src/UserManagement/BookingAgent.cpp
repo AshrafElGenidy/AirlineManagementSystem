@@ -1,6 +1,7 @@
 #include "BookingAgent.hpp"
 #include "FlightManager.hpp"
 #include "ReservationManager.hpp"
+#include "UsersManager.hpp"
 #include "UserInterface.hpp"
 #include <vector>
 
@@ -33,6 +34,7 @@ void BookingAgent::userMenu()
 			"View Reservations",
 			"Modify Reservation",
 			"Cancel Reservation",
+			"Resigter New Passenger",
 			"Logout"
 		};
 		
@@ -40,7 +42,7 @@ void BookingAgent::userMenu()
 		
 		try
 		{
-			int choice = ui->getChoice("Enter choice: ", 1, 6);
+			int choice = ui->getChoice("Enter choice: ", 1, 7);
 			
 			switch (choice)
 			{
@@ -60,6 +62,9 @@ void BookingAgent::userMenu()
 					ReservationManager::getInstance()->cancelReservation(username);
 					break;
 				case 6:
+					UsersManager::getInstance()->createNewPassenger();
+					break;
+				case 7:
 					ui->printSuccess("User " + username + " logged out successfully.");
 					return;
 				default:

@@ -141,7 +141,7 @@ void FlightManager::viewAllFlights()
 		{
 			try
 			{
-				flights.push_back(creator->createFromJson(flightData));
+				flights.push_back(creator->createFromJson(flightNum, flightData));
 			}
 			catch (const std::exception& e)
 			{
@@ -374,7 +374,7 @@ shared_ptr<Flight> FlightManager::loadFlightFromDatabase(const string& flightNum
 	try
 	{
 		json flightData = db->getEntry(flightNumber);
-		return creator->createFromJson(flightData);
+		return creator->createFromJson(flightNumber, flightData);
 	}
 	catch (const std::exception& e)
 	{
@@ -664,7 +664,7 @@ vector<shared_ptr<Flight>> FlightManager::searchFlightsByRoute(const string& ori
 		{
 			try
 			{
-				shared_ptr<Flight> flight = creator->createFromJson(flightData);
+				shared_ptr<Flight> flight = creator->createFromJson(flightNum, flightData);
 				
 				string flightOrigin = toLower(flight->getOrigin());
 				string flightDest = toLower(flight->getDestination());
@@ -738,4 +738,60 @@ bool FlightManager::flightExists(const string& flightNumber)
 bool FlightManager::hasActiveReservations(const string& flightNumber)
 {
 	return ReservationManager::hasActiveReservations(flightNumber);
+}
+
+bool FlightManager::reserveSeatForFlight(const string& flightNumber, const string& seatNumber)
+{
+	try
+	{
+		shared_ptr<Flight> flight = loadFlightFromDatabase(flightNumber);
+		if (!flight)
+		{
+			throw FlightException(FlightErrorCode::FLIGHT_NOT_FOUND);
+		}
+		
+		// Reserve the seat (this will throw if seat is invalid or already reserved)
+		bool success = flight->reserveSeat(seatNumber);
+		
+		if (success)
+		{
+			// Persist the change to database
+			saveFlightToDatabase(flight);
+		}
+		
+		return success;
+	}
+	catch (const std::exception& e)
+	{
+		ui->printError(string(e.what()));
+		return false;
+	}
+}
+
+bool FlightManager::releaseSeatForFlight(const string& flightNumber, const string& seatNumber)
+{
+	try
+	{
+		shared_ptr<Flight> flight = loadFlightFromDatabase(flightNumber);
+		if (!flight)
+		{
+			throw FlightException(FlightErrorCode::FLIGHT_NOT_FOUND);
+		}
+		
+		// Release the seat
+		bool success = flight->releaseSeat(seatNumber);
+		
+		if (success)
+		{
+			// Persist the change to database
+			saveFlightToDatabase(flight);
+		}
+		
+		return success;
+	}
+	catch (const std::exception& e)
+	{
+		ui->printError(string(e.what()));
+		return false;
+	}
 }

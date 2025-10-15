@@ -326,7 +326,7 @@ vector<string> SeatMap::getSeatMapHeader(const string& flightNumber, const strin
 {
 	vector<string> header;
 	header.push_back("Aircraft Type: " + aircraftType);
-	header.push_back("Route: " + origin + " → " + destination);
+	header.push_back("Route: " + origin + " to " + destination);
 	return header;
 }
 

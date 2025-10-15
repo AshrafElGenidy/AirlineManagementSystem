@@ -67,6 +67,10 @@ public:
 	
 	// Deletion check (for cascade operations)
 	static bool hasActiveReservations(const string& flightNumber);
+
+	// Reserve Seats
+	bool reserveSeatForFlight(const string& flightNumber, const string& seatNumber);
+	bool releaseSeatForFlight(const string& flightNumber, const string& seatNumber);
 	
 	// Destructor
 	~FlightManager() noexcept;

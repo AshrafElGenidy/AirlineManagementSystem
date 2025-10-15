@@ -116,7 +116,7 @@ void CrewManager::addCrewMember()
 		}
 		
 		CrewRole role = getValidRole();
-		CrewStatus status = getValidStatus();
+		CrewStatus status = CrewStatus::AVAILABLE;
 		
 		auto newCrew = std::shared_ptr<Crew>(new Crew(crewId, name, role, status, 0.0));
 		saveCrewToDatabase(newCrew);
@@ -232,13 +232,12 @@ void CrewManager::updateCrewMember()
 		vector<string> options = {
 			"Name",
 			"Role",
-			"Status",
 			"Back to Manage Crew"
 		};
 		
 		ui->displayMenu("Update Crew Member", options);
 		
-		int choice = ui->getChoice("Enter choice: ", 1, 4);
+		int choice = ui->getChoice("Enter choice: ", 1, 3);
 		
 		switch (choice)
 		{
@@ -266,14 +265,6 @@ void CrewManager::updateCrewMember()
 				break;
 			}
 			case 3:
-			{
-				CrewStatus newStatus = getValidStatus();
-				crew->setStatus(newStatus);
-				saveCrewToDatabase(crew);
-				ui->printSuccess("Crew status updated successfully.");
-				break;
-			}
-			case 4:
 				return;
 			default:
 				ui->printError("Invalid choice.");
@@ -472,28 +463,6 @@ CrewRole CrewManager::getValidRole()
 	{
 		ui->printError(e.what());
 		return CrewRole::PILOT;
-	}
-}
-
-CrewStatus CrewManager::getValidStatus()
-{
-	vector<string> statusOptions = {
-		"Available",
-		"Assigned",
-		"On Leave"
-	};
-	
-	ui->displayMenu("Select Crew Status", statusOptions);
-	
-	try
-	{
-		int choice = ui->getChoice("Enter status: ", 1, static_cast<int>(statusOptions.size()));
-		return Crew::stringToStatus(statusOptions[choice - 1]);
-	}
-	catch (const std::exception& e)
-	{
-		ui->printError(e.what());
-		return CrewStatus::AVAILABLE;
 	}
 }
 

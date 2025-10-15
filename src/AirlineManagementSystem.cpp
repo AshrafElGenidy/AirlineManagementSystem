@@ -54,6 +54,7 @@ void AirlineManagementSystem::runSystem()
 		
 		vector<string> options = {
 			"Login",
+			"Register",
 			"Exit System"
 		};
 		
@@ -61,7 +62,7 @@ void AirlineManagementSystem::runSystem()
 		
 		try
 		{
-			int choice = ui->getChoice("Enter choice: ", 1, 2);
+			int choice = ui->getChoice("Enter choice: ", 1, 3);
 			
 			switch (choice)
 			{
@@ -69,6 +70,9 @@ void AirlineManagementSystem::runSystem()
 					handleLogin();
 					break;
 				case 2:
+					usersManager->createNewPassenger();
+					break;
+				case 3:
 					ui->println("\nThank you for using the Airline Management System.");
 					ui->println("Goodbye!");
 					running = false;
@@ -114,13 +118,13 @@ void AirlineManagementSystem::shutdown()
 void AirlineManagementSystem::displayWelcomeBanner()
 {
 	ui->println("");
-	ui->println("╔════════════════════════════════════════════════╗");
-	ui->println("║                                                ║");
-	ui->println("║           AIRLINE MANAGEMENT SYSTEM            ║");
-	ui->println("║                                                ║");
-	ui->println("║     Flight Management & Reservation System     ║");
-	ui->println("║                                                ║");
-	ui->println("╚════════════════════════════════════════════════╝");
+	ui->println("====================================================");
+	ui->println("||                                                ||");
+	ui->println("||           AIRLINE MANAGEMENT SYSTEM            ||");
+	ui->println("||                                                ||");
+	ui->println("||     Flight Management & Reservation System     ||");
+	ui->println("||                                                ||");
+	ui->println("====================================================");
 	ui->println("");
 }
 
@@ -138,7 +142,6 @@ void AirlineManagementSystem::handleLogin()
 		currentUser = usersManager->login(username, password);
 		
 		// Login successful - enter user session
-		ui->pauseScreen();
 		handleUserSession();
 		
 		// After user session ends (logout)

@@ -129,7 +129,7 @@ shared_ptr<Flight> FlightCreator::createNewFlight()
 		string departureDateTime = getValidDepartureDateTime();
 		string arrivalDateTime = getValidArrivalDateTime();
 		string aircraftType = getValidAircraftType();
-		string status = getValidStatus();
+		string status = "Scheduled";
 		double price = getValidPrice();
 		
 		return std::shared_ptr<Flight>(new Flight(flightNumber, origin, destination, departureDateTime, arrivalDateTime,
@@ -373,10 +373,9 @@ json FlightCreator::toJson(const shared_ptr<Flight>& flight)
 	return flightData;
 }
 
-shared_ptr<Flight> FlightCreator::createFromJson(const json& data)
+shared_ptr<Flight> FlightCreator::createFromJson(const string &flightNumber, const json& data)
 {
 	// Extract all fields from JSON
-	string flightNumber = data.value("flightNumber", "");
 	string origin = data.value("origin", "");
 	string destination = data.value("destination", "");
 	string departureDateTime = data.value("departureDateTime", "");
