@@ -132,7 +132,7 @@ CrewRole Crew::stringToRole(const string& roleStr)
 	if (role == "flight attendant")
 		return CrewRole::FLIGHT_ATTENDANT;
 	
-	throw CrewException(CrewErrorCode::INVALID_ROLE, "Unknown role: " + roleStr);
+	throw CrewException("Invalid role. Must be Pilot, Copilot, or Flight Attendant.");
 }
 
 string Crew::statusToString(CrewStatus status) noexcept
@@ -163,52 +163,14 @@ CrewStatus Crew::stringToStatus(const string& statusStr)
 	if (status == "on leave")
 		return CrewStatus::ON_LEAVE;
 	
-	throw CrewException(CrewErrorCode::INVALID_STATUS, "Unknown status: " + statusStr);
+	throw CrewException("Invalid status. Must be Available, Assigned, or On Leave.");
 }
 
 // ==================== CrewException Class ====================
 
-CrewException::CrewException(CrewErrorCode code)
-	: errorCode(code), message(getErrorMessage())
-{
-}
-
-CrewException::CrewException(CrewErrorCode code, const string& customMessage)
-	: errorCode(code), message(customMessage)
-{
-}
+CrewException::CrewException(const string& message) : message(message) {}
 
 const char* CrewException::what() const noexcept
 {
 	return message.c_str();
-}
-
-CrewErrorCode CrewException::getErrorCode() const noexcept
-{
-	return errorCode;
-}
-
-string CrewException::getErrorMessage() const noexcept
-{
-	switch (errorCode)
-	{
-		case CrewErrorCode::CREW_NOT_FOUND:
-			return "Crew member does not exist.";
-		case CrewErrorCode::CREW_EXISTS:
-			return "Crew member already exists in the system.";
-		case CrewErrorCode::INVALID_CREW_ID:
-			return "Invalid crew ID. Must be CRW followed by 3-7 digits (e.g., CRW001).";
-		case CrewErrorCode::INVALID_NAME:
-			return "Invalid name. Must not be empty, less than 50 characters. Allowed: alphanumeric, space, hyphen.";
-		case CrewErrorCode::INVALID_ROLE:
-			return "Invalid role. Must be Pilot, Copilot, or Flight Attendant.";
-		case CrewErrorCode::INVALID_STATUS:
-			return "Invalid status. Must be Available, Assigned, or On Leave.";
-		case CrewErrorCode::FLIGHT_HOURS_EXCEEDED:
-			return "Crew member has exceeded maximum flight hours for this period.";
-		case CrewErrorCode::DATABASE_ERROR:
-			return "An error occurred while accessing the database.";
-		default:
-			return "An unknown crew error occurred.";
-	}
 }

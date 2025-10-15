@@ -69,7 +69,7 @@ int Flight::getTotalSeats() const
 		shared_ptr<Aircraft> aircraft = AircraftManager::getInstance()->getAircraft(aircraftType);
 		if (!aircraft)
 		{
-			throw FlightException(FlightErrorCode::INVALID_AIRCRAFT_TYPE);
+			throw FlightException("Invalid or missing aircraft type.");
 		}
 		
 		string seatLayout = aircraft->getSeatLayout();
@@ -78,7 +78,7 @@ int Flight::getTotalSeats() const
 	}
 	catch (const SeatMapException& e)
 	{
-		throw FlightException(FlightErrorCode::DATABASE_ERROR);
+		throw FlightException("An error occurred while accessing the database.");
 	}
 }
 
@@ -161,8 +161,7 @@ bool Flight::reserveSeat(const string& seatNumber)
 	// Check if seat already reserved
 	if (!isSeatAvailable(seatNumber))
 	{
-		throw FlightException(FlightErrorCode::SEAT_OPERATION_FAILED, 
-							 "Seat " + seatNumber + " is already reserved.");
+		throw FlightException("Seat " + seatNumber + " is already reserved.");
 	}
 	
 	// Check if seat is valid for this aircraft
@@ -171,7 +170,7 @@ bool Flight::reserveSeat(const string& seatNumber)
 		shared_ptr<Aircraft> aircraft = AircraftManager::getInstance()->getAircraft(aircraftType);
 		if (!aircraft)
 		{
-			throw FlightException(FlightErrorCode::INVALID_AIRCRAFT_TYPE);
+			throw FlightException("Invalid or missing aircraft type.");
 		}
 		
 		string seatLayout = aircraft->getSeatLayout();
@@ -180,13 +179,12 @@ bool Flight::reserveSeat(const string& seatNumber)
 		
 		if (!seatMap.isValidSeat(seatNumber))
 		{
-			throw FlightException(FlightErrorCode::SEAT_OPERATION_FAILED, 
-								 "Seat " + seatNumber + " is invalid for this aircraft.");
+			throw FlightException("Seat " + seatNumber + " is invalid for this aircraft.");
 		}
 	}
 	catch (const SeatMapException& e)
 	{
-		throw FlightException(FlightErrorCode::SEAT_OPERATION_FAILED, e.what());
+		throw FlightException("Seat operation failed." + string(e.what()));
 	}
 	
 	reservedSeats.push_back(seatNumber);
@@ -275,49 +273,9 @@ double Flight::getFlightDuration() const
 
 // ==================== FlightException Class ====================
 
-FlightException::FlightException(FlightErrorCode code) 
-	: errorCode(code), message(getErrorMessage())
-{
-}
-
-FlightException::FlightException(FlightErrorCode code, const string& customMessage)
-	: errorCode(code), message(customMessage)
-{
-}
+FlightException::FlightException(const string& message) : message(message) {}
 
 const char* FlightException::what() const noexcept
 {
 	return message.c_str();
-}
-
-FlightErrorCode FlightException::getErrorCode() const noexcept
-{
-	return errorCode;
-}
-
-string FlightException::getErrorMessage() const noexcept
-{
-	switch (errorCode)
-	{
-		case FlightErrorCode::FLIGHT_NOT_FOUND:
-			return "Flight does not exist.";
-		case FlightErrorCode::FLIGHT_EXISTS:
-			return "Flight already exists in the system.";
-		case FlightErrorCode::INVALID_FLIGHT_NUMBER:
-			return "Invalid flight number. Must be 3-10 characters, alphanumeric only.";
-		case FlightErrorCode::INVALID_AIRCRAFT_TYPE:
-			return "Invalid or missing aircraft type.";
-		case FlightErrorCode::INVALID_ORIGIN:
-			return "Invalid origin. Must not be empty and less than 50 characters.";
-		case FlightErrorCode::INVALID_DESTINATION:
-			return "Invalid destination. Must not be empty and less than 50 characters.";
-		case FlightErrorCode::INVALID_DATE_FORMAT:
-			return "Invalid date/time format. Expected: YYYY-MM-DD HH:MM";
-		case FlightErrorCode::SEAT_OPERATION_FAILED:
-			return "Seat operation failed.";
-		case FlightErrorCode::DATABASE_ERROR:
-			return "An error occurred while accessing the database.";
-		default:
-			return "An unknown flight error occurred.";
-	}
 }

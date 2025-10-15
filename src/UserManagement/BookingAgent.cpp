@@ -14,7 +14,7 @@ BookingAgent::BookingAgent(const string& username, const string& name, const str
 	// Verify this user is actually an BookingAgent
 	if (getRole() != UserRole::BOOKING_AGENT)
 	{
-		throw UserException(UserErrorCode::INVALID_INPUTS);
+		throw UserException("Error in User inputs.");
 	}
 }
 

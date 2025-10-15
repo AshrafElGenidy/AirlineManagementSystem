@@ -77,9 +77,9 @@ void AircraftManager::manageAircraft()
 					break;
 			}
 		}
-		catch (const UIException& e)
+		catch (const std::exception& e)
 		{
-			ui->printError(e.what());
+			ui->printError(string(e.what()));
 			ui->pauseScreen();
 		}
 	}
@@ -110,10 +110,6 @@ void AircraftManager::addAircraft()
 		// Save to database
 		saveAircraftToDatabase(newAircraft);
 		ui->printSuccess("Aircraft type '" + newAircraft->getAircraftType() + "' has been successfully added.");
-	}
-	catch (const AircraftException& e)
-	{
-		ui->printError(e.what());
 	}
 	catch (const std::exception& e)
 	{
@@ -191,57 +187,43 @@ void AircraftManager::updateAircraft()
 		
 		ui->displayMenu("Update Aircraft Type", options);
 		
-		try
+		int choice = ui->getChoice("Enter choice: ", 1, 4);
+		
+		switch (choice)
 		{
-			int choice = ui->getChoice("Enter choice: ", 1, 4);
-			
-			switch (choice)
+			case 1:
+				updateAircraftDetails(aircraft);
+				break;
+			case 2:
 			{
-				case 1:
-					updateAircraftDetails(aircraft);
-					break;
-				case 2:
+				int newFleetCount = ui->getInt("Enter new Fleet Count: ");
+				if (newFleetCount > 0)
 				{
-					try
-					{
-						int newFleetCount = ui->getInt("Enter new Fleet Count: ");
-						if (newFleetCount > 0)
-						{
-							aircraft->setFleetCount(newFleetCount);
-							ui->printSuccess("Fleet count updated successfully.");
-							saveAircraftToDatabase(aircraft);
-						}
-						else
-						{
-							ui->printError("Fleet count must be positive.");
-						}
-					}
-					catch (const UIException& e)
-					{
-						ui->printError(e.what());
-					}
-					break;
-				}
-				case 3:
-				{
-					string newStatus = selectAircraftStatus();
-					aircraft->setStatus(newStatus);
-					ui->printSuccess("Aircraft status updated successfully.");
+					aircraft->setFleetCount(newFleetCount);
+					ui->printSuccess("Fleet count updated successfully.");
 					saveAircraftToDatabase(aircraft);
-					break;
 				}
-				case 4:
-					ui->println("Returning to Manage Aircraft menu.");
-					ui->pauseScreen();
-					return;
-				default:
-					ui->printError("Invalid choice.");
-					break;
+				else
+				{
+					ui->printError("Fleet count must be positive.");
+				}
+				break;
 			}
-		}
-		catch (const UIException& e)
-		{
-			ui->printError(e.what());
+			case 3:
+			{
+				string newStatus = selectAircraftStatus();
+				aircraft->setStatus(newStatus);
+				ui->printSuccess("Aircraft status updated successfully.");
+				saveAircraftToDatabase(aircraft);
+				break;
+			}
+			case 4:
+				ui->println("Returning to Manage Aircraft menu.");
+				ui->pauseScreen();
+				return;
+			default:
+				ui->printError("Invalid choice.");
+				break;
 		}
 	}
 	catch (const std::exception& e)
@@ -276,22 +258,15 @@ void AircraftManager::removeAircraft()
 			return;
 		}
 		
-		try
+		bool confirm = ui->getYesNo("Are you sure you want to remove aircraft type '" + aircraftType + "'?");
+		if (confirm)
 		{
-			bool confirm = ui->getYesNo("Are you sure you want to remove aircraft type '" + aircraftType + "'?");
-			if (confirm)
-			{
-				deleteAircraftFromDatabase(aircraftType);
-				ui->printSuccess("Aircraft type '" + aircraftType + "' has been removed successfully.");
-			}
-			else
-			{
-				ui->printWarning("Aircraft removal canceled.");
-			}
+			deleteAircraftFromDatabase(aircraftType);
+			ui->printSuccess("Aircraft type '" + aircraftType + "' has been removed successfully.");
 		}
-		catch (const UIException& e)
+		else
 		{
-			ui->printError(e.what());
+			ui->printWarning("Aircraft removal canceled.");
 		}
 	}
 	catch (const std::exception& e)
@@ -433,7 +408,7 @@ void AircraftManager::manageMaintenance()
 	}
 	catch (const UIException& e)
 	{
-		ui->printError(e.what());
+		ui->printError(string(e.what()));
 		ui->pauseScreen();
 	}
 }
@@ -463,7 +438,7 @@ void AircraftManager::saveAircraftToDatabase(const shared_ptr<Aircraft>& aircraf
 {
 	if (!aircraft)
 	{
-		throw AircraftException(AircraftErrorCode::DATABASE_ERROR, "Cannot save null aircraft.");
+		throw AircraftException("An error occurred while accessing the database.");
 	}
 	
 	try
@@ -480,7 +455,7 @@ void AircraftManager::saveAircraftToDatabase(const shared_ptr<Aircraft>& aircraf
 	}
 	catch (const DatabaseException& e)
 	{
-		throw AircraftException(AircraftErrorCode::DATABASE_ERROR, e.what());
+		throw AircraftException("An error occurred while accessing the database." + string(e.what()));
 	}
 }
 
@@ -492,7 +467,7 @@ void AircraftManager::deleteAircraftFromDatabase(const string& aircraftType)
 	}
 	catch (const DatabaseException& e)
 	{
-		throw AircraftException(AircraftErrorCode::DATABASE_ERROR, e.what());
+		throw AircraftException("An error occurred while accessing the database." + string(e.what()));
 	}
 }
 
@@ -629,17 +604,9 @@ void AircraftManager::updateAircraftDetails(const shared_ptr<Aircraft>& aircraft
 				break;
 		}
 	}
-	catch (const UIException& e)
+	catch (const std::exception& e)
 	{
-		ui->printError(e.what());
-	}
-	catch (const AircraftValidationException& e)
-	{
-		ui->printError(e.what());
-	}
-	catch (const SeatMapException& e)
-	{
-		ui->printError(e.what());
+		ui->printError(string(e.what()));
 	}
 	
 	ui->pauseScreen();
@@ -663,7 +630,7 @@ string AircraftManager::selectAircraftStatus()
 	}
 	catch (const UIException& e)
 	{
-		ui->printError(e.what());
+		ui->printError(string(e.what()));
 		return "Available";
 	}
 }

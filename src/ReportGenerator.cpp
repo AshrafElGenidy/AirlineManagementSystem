@@ -172,7 +172,7 @@ void ReportGenerator::generateReports()
 		}
 		catch (const UIException& e)
 		{
-			ui->printError(e.what());
+			ui->printError(string(e.what()));
 			ui->pauseScreen();
 		}
 	}

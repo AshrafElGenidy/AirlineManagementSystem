@@ -101,7 +101,7 @@ int UserInterface::getInt(const string& prompt)
 		// Will throw exception below
 	}
 	
-	throw UIException(UIErrorCode::INVALID_INTEGER_INPUT);
+	throw UIException("Invalid input. Please enter a valid integer.");
 }
 
 double UserInterface::getDouble(const string& prompt)
@@ -127,10 +127,9 @@ double UserInterface::getDouble(const string& prompt)
 	}
 	catch (...)
 	{
-		// Will throw exception below
+		throw UIException("Invalid input. Please enter a valid number.");
 	}
-	
-	throw UIException(UIErrorCode::INVALID_DOUBLE_INPUT);
+	return 0.0;
 }
 
 string UserInterface::getPassword(const string& prompt)
@@ -191,7 +190,7 @@ string UserInterface::getPassword(const string& prompt)
 	// Validate password is not empty
 	if (password.empty())
 	{
-		throw UIException(UIErrorCode::INVALID_PASSWORD_INPUT);
+		throw UIException("Password cannot be empty.");
 	}
 	
 	return password;
@@ -203,7 +202,7 @@ int UserInterface::getChoice(const string& prompt, int min, int max)
 	
 	if (choice < min || choice > max)
 	{
-		throw UIException(UIErrorCode::INVALID_CHOICE);
+		throw UIException("Invalid choice. Please enter a valid option.");
 	}
 	
 	return choice;
@@ -230,7 +229,7 @@ bool UserInterface::getYesNo(const string& prompt)
 		return false;
 	}
 	
-	throw UIException(UIErrorCode::INVALID_YES_NO_INPUT);
+	throw UIException("Invalid input. Please enter 'yes' or 'no'.");
 }
 
 string UserInterface::getDate(const string& prompt, const string& format)
@@ -395,37 +394,9 @@ string UserInterface::formatCurrency(double amount)
 
 // ==================== UIException Class ====================
 
-UIException::UIException(UIErrorCode code) : errorCode(code) {}
+UIException::UIException(const string& message) : message(message) {}
 
 const char* UIException::what() const noexcept
 {
-	static string message;
-	message = getErrorMessage();
 	return message.c_str();
-}
-
-UIErrorCode UIException::getErrorCode() const noexcept
-{
-	return errorCode;
-}
-
-string UIException::getErrorMessage() const noexcept
-{
-	switch (errorCode)
-	{
-		case UIErrorCode::INVALID_INTEGER_INPUT:
-			return "Invalid input. Please enter a valid integer.";
-		case UIErrorCode::INVALID_DOUBLE_INPUT:
-			return "Invalid input. Please enter a valid number.";
-		case UIErrorCode::INVALID_CHOICE:
-			return "Invalid choice. Please enter a valid option.";
-		case UIErrorCode::INVALID_YES_NO_INPUT:
-			return "Invalid input. Please enter 'yes' or 'no'.";
-		case UIErrorCode::USER_CANCELED:
-			return "Operation canceled by user.";
-		case UIErrorCode::INVALID_PASSWORD_INPUT:
-			return "Password cannot be empty.";
-		default:
-			return "An unknown UI error occurred.";
-	}
 }

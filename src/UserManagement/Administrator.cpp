@@ -16,7 +16,7 @@ Administrator::Administrator(const string& username, const string& name, const s
 	// Verify this user is actually an administrator
 	if (getRole() != UserRole::ADMINISTRATOR)
 	{
-		throw UserException(UserErrorCode::INVALID_INPUTS);
+		throw UserException("Error in User inputs.");
 	}
 }
 

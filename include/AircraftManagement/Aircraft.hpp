@@ -59,32 +59,14 @@ public:
 
 // ==================== Aircraft Exception Class ====================
 
-enum class AircraftErrorCode
-{
-	AIRCRAFT_NOT_FOUND,
-	AIRCRAFT_EXISTS,
-	INVALID_AIRCRAFT_TYPE,
-	INVALID_SEAT_LAYOUT,
-	INVALID_SEAT_COUNT,
-	INVALID_MANUFACTURER,
-	INVALID_MODEL,
-	INVALID_FLEET_COUNT,
-	DATABASE_ERROR
-};
-
 class AircraftException : public std::exception
 {
 private:
-	AircraftErrorCode errorCode;
 	string message;
-	string getErrorMessage() const noexcept;
-
 public:
-	AircraftException(AircraftErrorCode code);
-	AircraftException(AircraftErrorCode code, const string& customMessage);
+	AircraftException(const string& message);
 	const char* what() const noexcept override;
 	virtual ~AircraftException() noexcept = default;
-	AircraftErrorCode getErrorCode() const noexcept;
 };
 
 #endif // AIRCRAFT_HPP

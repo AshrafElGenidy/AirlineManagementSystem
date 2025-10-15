@@ -25,32 +25,6 @@ public:
 	static bool isValidFleetCount(int fleetCount);
 };
 
-// ==================== Aircraft Validation Exception ====================
-
-enum class AircraftValidationErrorCode
-{
-	INVALID_AIRCRAFT_TYPE,
-	INVALID_MANUFACTURER,
-	INVALID_MODEL,
-	INVALID_SEAT_LAYOUT,
-	INVALID_SEAT_COUNT,
-	INVALID_ROWS,
-	INVALID_FLEET_COUNT
-};
-
-class AircraftValidationException : public std::exception
-{
-private:
-	AircraftValidationErrorCode errorCode;
-	string getErrorMessage() const noexcept;
-
-public:
-	AircraftValidationException(AircraftValidationErrorCode code);
-	const char* what() const noexcept override;
-	virtual ~AircraftValidationException() noexcept = default;
-	AircraftValidationErrorCode getErrorCode() const noexcept;
-};
-
 // ==================== AircraftCreator ====================
 
 class AircraftCreator

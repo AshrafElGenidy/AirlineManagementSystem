@@ -72,43 +72,6 @@ bool FlightValidator::isValidPrice(double price)
 	return price > 0.0;
 }
 
-// ==================== FlightValidationException ====================
-
-FlightValidationException::FlightValidationException(FlightValidationErrorCode code) : errorCode(code) {}
-
-const char* FlightValidationException::what() const noexcept
-{
-	static string message;
-	message = getErrorMessage();
-	return message.c_str();
-}
-
-FlightValidationErrorCode FlightValidationException::getErrorCode() const noexcept
-{
-	return errorCode;
-}
-
-string FlightValidationException::getErrorMessage() const noexcept
-{
-	switch (errorCode)
-	{
-		case FlightValidationErrorCode::INVALID_FLIGHT_NUMBER:
-			return "Invalid flight number. Must be 3-10 characters, alphanumeric only (e.g., AA123, BA456).";
-		case FlightValidationErrorCode::INVALID_ORIGIN:
-			return "Invalid origin. Must not be empty, less than 50 characters. Allowed: alphanumeric, space, hyphen, dot.";
-		case FlightValidationErrorCode::INVALID_DESTINATION:
-			return "Invalid destination. Must not be empty, less than 50 characters. Allowed: alphanumeric, space, hyphen, dot.";
-		case FlightValidationErrorCode::INVALID_DATE_TIME:
-			return "Invalid date/time format. Expected: YYYY-MM-DD HH:MM (e.g., 2024-12-25 14:30).";
-		case FlightValidationErrorCode::INVALID_PRICE:
-			return "Invalid price. Must be a positive number (e.g., 299.99).";
-		case FlightValidationErrorCode::NO_AIRCRAFT_TYPES_AVAILABLE:
-			return "No aircraft types available. Please add aircraft types first in Aircraft Management.";
-		default:
-			return "An unknown flight validation error occurred.";
-	}
-}
-
 // ==================== FlightCreator ====================
 
 FlightCreator::FlightCreator() 
@@ -137,7 +100,7 @@ shared_ptr<Flight> FlightCreator::createNewFlight()
 	}
 	catch (const UIException& e)
 	{
-		ui->printError(e.what());
+		ui->printError(string(e.what()));
 		ui->pauseScreen();
 		return nullptr;
 	}
@@ -154,15 +117,11 @@ string FlightCreator::getValidFlightNumber()
 			if (FlightValidator::isValidFlightNumber(input))
 				return input;
 			
-			throw FlightValidationException(FlightValidationErrorCode::INVALID_FLIGHT_NUMBER);
+			throw FlightException("Invalid flight number. Must be 3-10 characters, alphanumeric only (e.g., AA123, BA456).");
 		}
-		catch (const FlightValidationException& e)
+		catch (const std::exception& e)
 		{
-			ui->printError(e.what());
-		}
-		catch (const UIException& e)
-		{
-			ui->printError(e.what());
+			ui->printError(string(e.what()));
 		}
 	}
 }
@@ -178,15 +137,11 @@ string FlightCreator::getValidOrigin()
 			if (FlightValidator::isValidOrigin(input))
 				return input;
 			
-			throw FlightValidationException(FlightValidationErrorCode::INVALID_ORIGIN);
+			throw FlightException("Invalid origin. Must not be empty, less than 50 characters. Allowed: alphanumeric, space, hyphen, dot.");
 		}
-		catch (const FlightValidationException& e)
+		catch (const std::exception& e)
 		{
-			ui->printError(e.what());
-		}
-		catch (const UIException& e)
-		{
-			ui->printError(e.what());
+			ui->printError(string(e.what()));
 		}
 	}
 }
@@ -202,15 +157,11 @@ string FlightCreator::getValidDestination()
 			if (FlightValidator::isValidDestination(input))
 				return input;
 			
-			throw FlightValidationException(FlightValidationErrorCode::INVALID_DESTINATION);
+			throw FlightException("Invalid destination. Must not be empty, less than 50 characters. Allowed: alphanumeric, space, hyphen, dot.");
 		}
-		catch (const FlightValidationException& e)
+		catch (const std::exception& e)
 		{
-			ui->printError(e.what());
-		}
-		catch (const UIException& e)
-		{
-			ui->printError(e.what());
+			ui->printError(string(e.what()));
 		}
 	}
 }
@@ -226,15 +177,11 @@ string FlightCreator::getValidDepartureDateTime()
 			if (FlightValidator::isValidDateTime(input))
 				return input;
 			
-			throw FlightValidationException(FlightValidationErrorCode::INVALID_DATE_TIME);
+			throw FlightException("Invalid destination. Must not be empty, less than 50 characters. Allowed: alphanumeric, space, hyphen, dot.");
 		}
-		catch (const FlightValidationException& e)
+		catch (const std::exception& e)
 		{
-			ui->printError(e.what());
-		}
-		catch (const UIException& e)
-		{
-			ui->printError(e.what());
+			ui->printError(string(e.what()));
 		}
 	}
 }
@@ -250,15 +197,11 @@ string FlightCreator::getValidArrivalDateTime()
 			if (FlightValidator::isValidDateTime(input))
 				return input;
 			
-			throw FlightValidationException(FlightValidationErrorCode::INVALID_DATE_TIME);
+			throw FlightException("Invalid destination. Must not be empty, less than 50 characters. Allowed: alphanumeric, space, hyphen, dot.");
 		}
-		catch (const FlightValidationException& e)
+		catch (const std::exception& e)
 		{
-			ui->printError(e.what());
-		}
-		catch (const UIException& e)
-		{
-			ui->printError(e.what());
+			ui->printError(string(e.what()));
 		}
 	}
 }
@@ -273,7 +216,7 @@ string FlightCreator::getValidAircraftType()
 			
 			if (aircraftTypes.empty())
 			{
-				throw FlightValidationException(FlightValidationErrorCode::NO_AIRCRAFT_TYPES_AVAILABLE);
+				throw FlightException("No aircraft types available. Please add aircraft types first in Aircraft Management.");
 			}
 			
 			ui->displayMenu("Available Aircraft Types", aircraftTypes);
@@ -281,15 +224,11 @@ string FlightCreator::getValidAircraftType()
 			
 			return aircraftTypes[typeChoice - 1];
 		}
-		catch (const FlightValidationException& e)
+		catch (const std::exception& e)
 		{
-			ui->printError(e.what());
+			ui->printError(string(e.what()));
 			ui->pauseScreen();
 			throw;  // Re-throw to caller
-		}
-		catch (const UIException& e)
-		{
-			ui->printError(e.what());
 		}
 	}
 }
@@ -314,7 +253,7 @@ string FlightCreator::getValidStatus()
 	}
 	catch (const UIException& e)
 	{
-		ui->printError(e.what());
+		ui->printError(string(e.what()));
 		return "Scheduled";  // Default
 	}
 }
@@ -330,15 +269,11 @@ double FlightCreator::getValidPrice()
 			if (FlightValidator::isValidPrice(price))
 				return price;
 			
-			throw FlightValidationException(FlightValidationErrorCode::INVALID_PRICE);
+			throw FlightException("Invalid price. Must be a positive number (e.g., 299.99).");
 		}
-		catch (const FlightValidationException& e)
+		catch (const std::exception& e)
 		{
-			ui->printError(e.what());
-		}
-		catch (const UIException& e)
-		{
-			ui->printError(e.what());
+			ui->printError(string(e.what()));
 		}
 	}
 }
@@ -354,7 +289,7 @@ json FlightCreator::toJson(const shared_ptr<Flight>& flight)
 {
 	if (!flight)
 	{
-		throw FlightException(FlightErrorCode::DATABASE_ERROR, "Cannot serialize null flight.");
+		throw FlightException("An error occurred while accessing the database.");
 	}
 	
 	json flightData;

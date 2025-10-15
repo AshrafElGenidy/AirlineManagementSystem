@@ -79,7 +79,7 @@ void FlightManager::manageFlights()
 		}
 		catch (const UIException& e)
 		{
-			ui->printError(e.what());
+			ui->printError(string(e.what()));
 			ui->pauseScreen();
 		}
 	}
@@ -387,7 +387,7 @@ void FlightManager::saveFlightToDatabase(const shared_ptr<Flight>& flight)
 {
 	if (!flight)
 	{
-		throw FlightException(FlightErrorCode::DATABASE_ERROR, "Cannot save null flight.");
+		throw FlightException("An error occurred while accessing the database.");
 	}
 	
 	try
@@ -404,7 +404,7 @@ void FlightManager::saveFlightToDatabase(const shared_ptr<Flight>& flight)
 	}
 	catch (const DatabaseException& e)
 	{
-		throw FlightException(FlightErrorCode::DATABASE_ERROR, e.what());
+		throw FlightException("An error occurred while accessing the database." + string(e.what()));
 	}
 }
 
@@ -416,7 +416,7 @@ void FlightManager::deleteFlightFromDatabase(const string& flightNumber)
 	}
 	catch (const DatabaseException& e)
 	{
-		throw FlightException(FlightErrorCode::DATABASE_ERROR, e.what());
+		throw FlightException("An error occurred while accessing the database." + string(e.what()));
 	}
 }
 
@@ -535,9 +535,9 @@ void FlightManager::updateFlightDetails(const shared_ptr<Flight>& flight)
 				break;
 		}
 	}
-	catch (const FlightValidationException& e)
+	catch (const FlightException& e)
 	{
-		ui->printError(e.what());
+		ui->printError(string(e.what()));
 	}
 	
 	ui->pauseScreen();
@@ -563,7 +563,7 @@ string FlightManager::selectFlightStatus()
 	}
 	catch (const UIException& e)
 	{
-		ui->printError(e.what());
+		ui->printError(string(e.what()));
 		return "Scheduled";
 	}
 }
@@ -747,7 +747,7 @@ bool FlightManager::reserveSeatForFlight(const string& flightNumber, const strin
 		shared_ptr<Flight> flight = loadFlightFromDatabase(flightNumber);
 		if (!flight)
 		{
-			throw FlightException(FlightErrorCode::FLIGHT_NOT_FOUND);
+			throw FlightException("Flight does not exist.");
 		}
 		
 		// Reserve the seat (this will throw if seat is invalid or already reserved)
@@ -775,7 +775,7 @@ bool FlightManager::releaseSeatForFlight(const string& flightNumber, const strin
 		shared_ptr<Flight> flight = loadFlightFromDatabase(flightNumber);
 		if (!flight)
 		{
-			throw FlightException(FlightErrorCode::FLIGHT_NOT_FOUND);
+			throw FlightException("Flight does not exist.");
 		}
 		
 		// Release the seat

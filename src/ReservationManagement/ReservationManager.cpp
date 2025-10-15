@@ -37,11 +37,11 @@ void ReservationManager::createReservation(const string& agentUsername)
 	{
 		string passenger = ui->getString("Passenger username: ");
 		if (!UsersManager::getInstance()->userExists(passenger))
-			throw ReservationException(ReservationErrorCode::PASSENGER_NOT_FOUND);
+			throw ReservationException("Passenger not found in system.");
 		
 		string flight = ui->getString("Flight number: ");
 		if (!FlightManager::getInstance()->flightExists(flight))
-			throw ReservationException(ReservationErrorCode::FLIGHT_NOT_FOUND);
+			throw ReservationException("Flight not found.");
 		
 		auto flightObj = FlightManager::getInstance()->getFlight(flight);
 		
@@ -90,7 +90,7 @@ void ReservationManager::createReservation(const string& agentUsername)
 		ui->println("Payment successful!");
 		
 		if (!FlightManager::getInstance()->reserveSeatForFlight(flight, seat))
-			throw ReservationException(ReservationErrorCode::SEAT_OPERATION_FAILED);
+			throw ReservationException("Failed to reserve or release seat. Please try again.");
 		
 		string resId = "RES_" + std::to_string(db->getEntryCount() + 1);
 		auto res = shared_ptr<Reservation>(new Reservation(
@@ -102,7 +102,10 @@ void ReservationManager::createReservation(const string& agentUsername)
 		ui->printSuccess("Reservation created!");
 		ui->println("ID: " + resId);
 	}
-	catch (const std::exception& e) { ui->printError(string(e.what())); }
+	catch (const std::exception& e)
+	{ 
+		ui->printError(string(e.what()));
+	}
 	
 	ui->pauseScreen();
 }
@@ -126,9 +129,9 @@ void ReservationManager::updateOrCancel(bool isModify)
 	try
 	{
 		auto res = loadReservationFromDatabase(ui->getString("Reservation ID: "));
-		if (!res) throw ReservationException(ReservationErrorCode::RESERVATION_NOT_FOUND);
+		if (!res) throw ReservationException("Reservation not found.");
 		if (res->getStatus() != ReservationStatus::CONFIRMED)
-			throw ReservationException(ReservationErrorCode::INVALID_STATUS_TRANSITION);
+			throw ReservationException("Invalid status transition for this reservation.");
 		
 		if (isModify)
 		{
@@ -159,14 +162,14 @@ void ReservationManager::updateOrCancel(bool isModify)
 			
 			if (!FlightManager::getInstance()->releaseSeatForFlight(res->getFlightNumber(), res->getSeatNumber()))
 			{
-				throw ReservationException(ReservationErrorCode::SEAT_OPERATION_FAILED);
+				throw ReservationException("Failed to reserve or release seat. Please try again.");
 			}
 
 			if (!FlightManager::getInstance()->reserveSeatForFlight(res->getFlightNumber(), newSeat))
 			{
 				// Rollback: re-reserve the old seat
 				FlightManager::getInstance()->reserveSeatForFlight(res->getFlightNumber(), res->getSeatNumber());
-				throw ReservationException(ReservationErrorCode::SEAT_OPERATION_FAILED);
+				throw ReservationException("Failed to reserve or release seat. Please try again.");
 			}
 			
 			res->setSeatNumber(newSeat);
@@ -190,7 +193,10 @@ void ReservationManager::updateOrCancel(bool isModify)
 			ui->printSuccess("Reservation canceled!");
 		}
 	}
-	catch (const std::exception& e) { ui->printError(string(e.what())); }
+	catch (const std::exception& e)
+	{ 
+		ui->printError(string(e.what()));
+	}
 	
 	ui->pauseScreen();
 }
@@ -205,11 +211,11 @@ void ReservationManager::checkIn(const string& passengerUsername)
 	try
 	{
 		auto res = loadReservationFromDatabase(ui->getString("Reservation ID: "));
-		if (!res) throw ReservationException(ReservationErrorCode::RESERVATION_NOT_FOUND);
+		if (!res) throw ReservationException("Reservation not found.");
 		if (res->getPassengerUsername() != passengerUsername)
-			throw ReservationException(ReservationErrorCode::UNAUTHORIZED_ACCESS);
+			throw ReservationException("You do not have access to this reservation.");
 		if (res->getStatus() != ReservationStatus::CONFIRMED)
-			throw ReservationException(ReservationErrorCode::INVALID_STATUS_TRANSITION);
+			throw ReservationException("Invalid status transition for this reservation.");
 		
 		if (!res->isCheckedIn())
 		{
@@ -220,7 +226,10 @@ void ReservationManager::checkIn(const string& passengerUsername)
 		ui->printSuccess("Checked in!");
 		displayBoardingPass(res);
 	}
-	catch (const std::exception& e) { ui->printError(string(e.what())); }
+	catch (const std::exception& e)
+	{ 
+		ui->printError(string(e.what()));
+	}
 	
 	ui->pauseScreen();
 }
@@ -233,15 +242,18 @@ void ReservationManager::viewBoardingPass(const string& passengerUsername)
 	try
 	{
 		auto res = loadReservationFromDatabase(ui->getString("Reservation ID: "));
-		if (!res) throw ReservationException(ReservationErrorCode::RESERVATION_NOT_FOUND);
+		if (!res) throw ReservationException("Reservation not found.");
 		if (res->getPassengerUsername() != passengerUsername)
-			throw ReservationException(ReservationErrorCode::UNAUTHORIZED_ACCESS);
+			throw ReservationException("You do not have access to this reservation.");
 		if (!res->isCheckedIn())
-			throw ReservationException(ReservationErrorCode::INVALID_STATUS_TRANSITION);
+			throw ReservationException("Invalid status transition for this reservation.");
 		
 		displayBoardingPass(res);
 	}
-	catch (const std::exception& e) { ui->printError(string(e.what())); }
+	catch (const std::exception& e)
+	{ 
+		ui->printError(string(e.what()));
+	}
 	
 	ui->pauseScreen();
 }
@@ -292,7 +304,10 @@ void ReservationManager::viewReservations(const string& username, UserRole role)
 		
 		displayReservationsTable(reservations);
 	}
-	catch (const std::exception& e) { ui->printError(string(e.what())); }
+	catch (const std::exception& e)
+	{ 
+		ui->printError(string(e.what()));
+	}
 	
 	ui->pauseScreen();
 }
@@ -311,10 +326,16 @@ vector<shared_ptr<Reservation>> ReservationManager::getReservationsByPassenger(c
 				if (res->getPassengerUsername() == passengerUsername)
 					results.push_back(res);
 			}
-			catch (const std::exception&) {}
+			catch (const std::exception&)
+			{
+				continue;
+			}
 		}
 	}
-	catch (const std::exception& e) { ui->printError("Error loading reservations: " + string(e.what())); }
+	catch (const std::exception& e)
+	{ 
+		ui->printError("Error loading reservations: " + string(e.what()));
+	}
 	return results;
 }
 
@@ -332,10 +353,16 @@ vector<shared_ptr<Reservation>> ReservationManager::getReservationsByFlight(cons
 				if (res->getFlightNumber() == flightNumber)
 					results.push_back(res);
 			}
-			catch (const std::exception&) {}
+			catch (const std::exception&)
+			{
+				continue;
+			}
 		}
 	}
-	catch (const std::exception& e) { ui->printError("Error loading reservations: " + string(e.what())); }
+	catch (const std::exception& e)
+	{ 
+		ui->printError("Error loading reservations: " + string(e.what()));
+	}
 	return results;
 }
 
@@ -356,10 +383,16 @@ vector<shared_ptr<Reservation>> ReservationManager::loadAllReservations()
 			{
 				results.push_back(reservationFromJson(data));
 			}
-			catch (const std::exception&) {}
+			catch (const std::exception&)
+			{
+				continue;
+			}
 		}
 	}
-	catch (const std::exception& e) { ui->printError("Error loading reservations: " + string(e.what())); }
+	catch (const std::exception& e)
+	{ 
+		ui->printError("Error loading reservations: " + string(e.what()));
+	}
 	return results;
 }
 
@@ -376,10 +409,16 @@ bool ReservationManager::hasActiveReservations(const string& flightNumber)
 				if (res->getFlightNumber() == flightNumber && res->getStatus() == ReservationStatus::CONFIRMED)
 					return true;
 			}
-			catch (const std::exception&) {}
+			catch (const std::exception&)
+			{
+				continue;
+			}
 		}
 	}
-	catch (const std::exception&) { return true; }
+	catch (const std::exception&)
+	{ 
+		return true;
+	}
 	return false;
 }
 
@@ -394,13 +433,13 @@ shared_ptr<Reservation> ReservationManager::loadReservationFromDatabase(const st
 	}
 	catch (const std::exception&)
 	{
-		throw ReservationException(ReservationErrorCode::DATABASE_ERROR);
+		throw ReservationException("Database error occurred while processing reservation.");
 	}
 }
 
 void ReservationManager::saveReservationToDatabase(const shared_ptr<Reservation>& reservation)
 {
-	if (!reservation) throw ReservationException(ReservationErrorCode::DATABASE_ERROR);
+	if (!reservation) throw ReservationException("Database error occurred while processing reservation.");
 	try
 	{
 		json data = reservationToJson(reservation);
@@ -411,7 +450,7 @@ void ReservationManager::saveReservationToDatabase(const shared_ptr<Reservation>
 	}
 	catch (const DatabaseException&)
 	{
-		throw ReservationException(ReservationErrorCode::DATABASE_ERROR);
+		throw ReservationException("Database error occurred while processing reservation.");
 	}
 }
 
@@ -483,7 +522,10 @@ void ReservationManager::displayBoardingPass(const shared_ptr<Reservation>& res)
 	{
 		passengerName = UsersManager::getInstance()->getUser(res->getPassengerUsername())->getName();
 	}
-	catch (const std::exception&) { passengerName = res->getPassengerUsername(); }
+	catch (const std::exception&)
+	{ 
+		passengerName = res->getPassengerUsername();
+	}
 	
 	auto flight = FlightManager::getInstance()->getFlight(res->getFlightNumber());
 	

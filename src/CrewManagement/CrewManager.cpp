@@ -77,7 +77,7 @@ void CrewManager::manageCrew()
 		}
 		catch (const UIException& e)
 		{
-			ui->printError(e.what());
+			ui->printError(string(e.what()));
 			ui->pauseScreen();
 		}
 	}
@@ -356,7 +356,7 @@ void CrewManager::saveCrewToDatabase(const shared_ptr<Crew>& crew)
 {
 	if (!crew)
 	{
-		throw CrewException(CrewErrorCode::DATABASE_ERROR, "Cannot save null crew.");
+		throw CrewException("An error occurred while accessing the database.");
 	}
 	
 	try
@@ -378,7 +378,7 @@ void CrewManager::saveCrewToDatabase(const shared_ptr<Crew>& crew)
 	}
 	catch (const DatabaseException& e)
 	{
-		throw CrewException(CrewErrorCode::DATABASE_ERROR, e.what());
+		throw CrewException("An error occurred while accessing the database." + string(e.what()));
 	}
 }
 
@@ -390,7 +390,7 @@ void CrewManager::deleteCrewFromDatabase(const string& crewId)
 	}
 	catch (const DatabaseException& e)
 	{
-		throw CrewException(CrewErrorCode::DATABASE_ERROR, e.what());
+		throw CrewException("An error occurred while accessing the database." + string(e.what()));
 	}
 }
 
@@ -461,7 +461,7 @@ CrewRole CrewManager::getValidRole()
 	}
 	catch (const std::exception& e)
 	{
-		ui->printError(e.what());
+		ui->printError(string(e.what()));
 		return CrewRole::PILOT;
 	}
 }

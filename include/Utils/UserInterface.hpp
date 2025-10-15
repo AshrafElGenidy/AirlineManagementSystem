@@ -78,27 +78,14 @@ public:
 
 // ==================== UI Exception Class ====================
 
-enum class UIErrorCode
-{
-	INVALID_INTEGER_INPUT,
-	INVALID_DOUBLE_INPUT,
-	INVALID_CHOICE,
-	INVALID_YES_NO_INPUT,
-	USER_CANCELED,
-	INVALID_PASSWORD_INPUT
-};
-
 class UIException : public std::exception
 {
 private:
-	UIErrorCode errorCode;
-	string getErrorMessage() const noexcept;
-
+	string message;
 public:
-	UIException(UIErrorCode code);
+	UIException(const string& message);
 	const char* what() const noexcept override;
 	virtual ~UIException() noexcept = default;
-	UIErrorCode getErrorCode() const noexcept;
 };
 
 #endif // USERINTERFACE_HPP

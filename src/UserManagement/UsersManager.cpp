@@ -102,19 +102,9 @@ void UsersManager::initializeSystem()
 				
 				adminCreated = true;
 			}
-			catch (const UserException& e)
-			{
-				ui->printError(string(e.what()));
-				ui->println("Please try again.");
-			}
-			catch (const UIException& e)
-			{
-				ui->printError(string(e.what()));
-				ui->println("Please try again.");
-			}
 			catch (const std::exception& e)
 			{
-				ui->printError("An error occurred: " + string(e.what()));
+				ui->printError(string(e.what()));
 				ui->println("Please try again.");
 			}
 		}
@@ -127,7 +117,7 @@ shared_ptr<User> UsersManager::login(const string& username, const string& passw
 {
 	if (!db->entryExists(username))
 	{
-		throw UserException(UserErrorCode::USER_NOT_FOUND);
+		throw UserException("User does not exist.");
 	}
 	
 	json userData = db->getEntry(username);
@@ -137,7 +127,7 @@ shared_ptr<User> UsersManager::login(const string& username, const string& passw
 	string passwordHash = hashPassword(password);
 	if (passwordHash != storedHash)
 	{
-		throw UserException(UserErrorCode::INCORRECT_PASSWORD);
+		throw UserException("Invalid credentials. Please check your username and password.");
 	}
 	
 	// Load and return appropriate user type
@@ -153,19 +143,21 @@ void UsersManager::createUser(const string& username, const string& password, Us
 	// Validate username
 	if (!validateUsername(username))
 	{
-		throw UserException(UserErrorCode::INVALID_USERNAME);
+		throw UserException("Invalid username. Must be " + std::to_string(MIN_USERNAME_LENGTH) + "-" +
+				   std::to_string(MAX_USERNAME_LENGTH) + " characters, alphanumeric and underscore only.");
 	}
 	
 	// Validate password
 	if (!validatePassword(password))
 	{
-		throw UserException(UserErrorCode::INVALID_PASSWORD);
+		throw UserException("Invalid password. Must be between " + std::to_string(MIN_PASSWORD_LENGTH) +
+				   " and " + std::to_string(MAX_PASSWORD_LENGTH) + " characters.");
 	}
 	
 	// Check if username already exists
 	if (db->entryExists(username))
 	{
-		throw UserException(UserErrorCode::USERNAME_TAKEN);
+		throw UserException("Username is already taken. Please choose a different username.");
 	}
 	
 	// Get user details
@@ -188,7 +180,7 @@ void UsersManager::createUser(const string& username, const string& password, Us
 			user = std::shared_ptr<User>(new Passenger(username, name, email, phoneNumber, role));
 			break;
 		default:
-			throw UserException(UserErrorCode::INVALID_INPUTS);
+			throw UserException("Error in User inputs.");
 	}
 	
 	// Save to database with password hash
@@ -209,7 +201,7 @@ shared_ptr<User> UsersManager::loadUserFromDatabase(const string& username)
 {
 	if (!db->entryExists(username))
 	{
-		throw UserException(UserErrorCode::USER_NOT_FOUND);
+		throw UserException("User does not exist.");
 	}
 	
 	json userData = db->getEntry(username);
@@ -233,7 +225,7 @@ shared_ptr<User> UsersManager::loadUserFromDatabase(const string& username)
 			user = std::shared_ptr<User>(new Passenger(username, name, email, phoneNumber, role));
 			break;
 		default:
-			throw UserException(UserErrorCode::DATABASE_ERROR);
+			throw UserException("An error occurred while accessing the database.");
 	}
 	
 	return user;
@@ -243,12 +235,12 @@ void UsersManager::saveUserToDatabase(const shared_ptr<User>& user)
 {
 	if (!user)
 	{
-		throw UserException(UserErrorCode::DATABASE_ERROR);
+		throw UserException("An error occurred while accessing the database.");
 	}
 	
 	if (!db->entryExists(user->getUsername()))
 	{
-		throw UserException(UserErrorCode::USER_NOT_FOUND);
+		throw UserException("User does not exist.");
 	}
 	
 	json updates;
@@ -264,7 +256,7 @@ void UsersManager::deleteUserFromDatabase(const string& username)
 {
 	if (!db->entryExists(username))
 	{
-		throw UserException(UserErrorCode::USER_NOT_FOUND);
+		throw UserException("User does not exist.");
 	}
 	
 	db->deleteEntry(username);
@@ -292,7 +284,7 @@ UserRole UsersManager::getUserRoleChoice()
 		case 3:
 			return UserRole::PASSENGER;
 		default:
-			throw UserException(UserErrorCode::INVALID_INPUTS);
+			throw UserException("Error in User inputs.");
 	}
 }
 
@@ -492,13 +484,9 @@ void UsersManager::modifyUserInfo()
 		shared_ptr<User> user = loadUserFromDatabase(username);
 		updateUserDetails(user);
 	}
-	catch (const UserException& e)
-	{
-		ui->printError(string(e.what()));
-	}
 	catch (const std::exception& e)
 	{
-		ui->printError("Error: " + string(e.what()));
+		ui->printError(string(e.what()));
 	}
 	
 	ui->pauseScreen();
@@ -531,13 +519,9 @@ void UsersManager::deleteUser()
 			ui->printWarning("User deletion canceled.");
 		}
 	}
-	catch (const UIException& e)
-	{
-		ui->printError(string(e.what()));
-	}
 	catch (const std::exception& e)
 	{
-		ui->printError("Error: " + string(e.what()));
+		ui->printError(string(e.what()));
 	}
 	
 	ui->pauseScreen();

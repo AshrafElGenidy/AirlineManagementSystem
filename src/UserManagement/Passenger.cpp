@@ -13,7 +13,7 @@ Passenger::Passenger(const string& username, const string& name, const string& e
 	// Verify this user is actually an Passenger
 	if (getRole() != UserRole::PASSENGER)
 	{
-		throw UserException(UserErrorCode::INVALID_INPUTS);
+		throw UserException("Error in User inputs.");
 	}
 }
 

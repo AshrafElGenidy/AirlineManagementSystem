@@ -93,39 +93,9 @@ void Reservation::setCheckedIn(const string& checkInDate) noexcept
 
 // ==================== ReservationException Class ====================
 
-ReservationException::ReservationException(ReservationErrorCode code) : errorCode(code) {}
+ReservationException::ReservationException(const string& message) : message(message) {}
 
 const char* ReservationException::what() const noexcept
 {
-	static string message;
-	message = getErrorMessage();
 	return message.c_str();
-}
-
-ReservationErrorCode ReservationException::getErrorCode() const noexcept
-{
-	return errorCode;
-}
-
-string ReservationException::getErrorMessage() const noexcept
-{
-	switch (errorCode)
-	{
-		case ReservationErrorCode::PASSENGER_NOT_FOUND:
-			return "Passenger not found in system.";
-		case ReservationErrorCode::FLIGHT_NOT_FOUND:
-			return "Flight not found.";
-		case ReservationErrorCode::RESERVATION_NOT_FOUND:
-			return "Reservation not found.";
-		case ReservationErrorCode::INVALID_STATUS_TRANSITION:
-			return "Invalid status transition for this reservation.";
-		case ReservationErrorCode::UNAUTHORIZED_ACCESS:
-			return "You do not have access to this reservation.";
-		case ReservationErrorCode::SEAT_OPERATION_FAILED:
-			return "Failed to reserve or release seat. Please try again.";
-		case ReservationErrorCode::DATABASE_ERROR:
-			return "Database error occurred while processing reservation.";
-		default:
-			return "An unknown reservation error occurred.";
-	}
 }

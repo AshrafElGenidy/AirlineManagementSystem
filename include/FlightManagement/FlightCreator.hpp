@@ -23,31 +23,6 @@ public:
 	static bool isValidPrice(double price);
 };
 
-// ==================== Flight Validation Exception ====================
-
-enum class FlightValidationErrorCode
-{
-	INVALID_FLIGHT_NUMBER,
-	INVALID_ORIGIN,
-	INVALID_DESTINATION,
-	INVALID_DATE_TIME,
-	INVALID_PRICE,
-	NO_AIRCRAFT_TYPES_AVAILABLE
-};
-
-class FlightValidationException : public std::exception
-{
-private:
-	FlightValidationErrorCode errorCode;
-	string getErrorMessage() const noexcept;
-
-public:
-	FlightValidationException(FlightValidationErrorCode code);
-	const char* what() const noexcept override;
-	virtual ~FlightValidationException() noexcept = default;
-	FlightValidationErrorCode getErrorCode() const noexcept;
-};
-
 // ==================== FlightCreator ====================
 
 class FlightCreator

@@ -55,48 +55,6 @@ bool AircraftValidator::isValidFleetCount(int fleetCount)
 	return fleetCount > 0;
 }
 
-// ==================== AircraftValidationException ====================
-
-AircraftValidationException::AircraftValidationException(AircraftValidationErrorCode code)
-	: errorCode(code)
-{
-}
-
-const char* AircraftValidationException::what() const noexcept
-{
-	static string message;
-	message = getErrorMessage();
-	return message.c_str();
-}
-
-AircraftValidationErrorCode AircraftValidationException::getErrorCode() const noexcept
-{
-	return errorCode;
-}
-
-string AircraftValidationException::getErrorMessage() const noexcept
-{
-	switch (errorCode)
-	{
-		case AircraftValidationErrorCode::INVALID_AIRCRAFT_TYPE:
-			return "Invalid aircraft type. Must be 2-30 characters, alphanumeric only (e.g., Boeing737, AirbusA320).";
-		case AircraftValidationErrorCode::INVALID_MANUFACTURER:
-			return "Invalid manufacturer. Must not be empty, less than 50 characters. Allowed: alphanumeric, space, hyphen, dot.";
-		case AircraftValidationErrorCode::INVALID_MODEL:
-			return "Invalid model. Must not be empty, less than 50 characters. Allowed: alphanumeric, space, hyphen, dot.";
-		case AircraftValidationErrorCode::INVALID_SEAT_LAYOUT:
-			return "Invalid seat layout. Expected format: N-N or N-N-N (e.g., 3-3 or 2-4-2).";
-		case AircraftValidationErrorCode::INVALID_SEAT_COUNT:
-			return "Invalid seat count. Must be between 50 and 500.";
-		case AircraftValidationErrorCode::INVALID_ROWS:
-			return "Invalid number of rows. Must be positive.";
-		case AircraftValidationErrorCode::INVALID_FLEET_COUNT:
-			return "Invalid fleet count. Must be positive.";
-		default:
-			return "An unknown aircraft validation error occurred.";
-	}
-}
-
 // ==================== AircraftCreator ====================
 
 AircraftCreator::AircraftCreator()
@@ -122,9 +80,9 @@ shared_ptr<Aircraft> AircraftCreator::createNewAircraft()
 		
 		return std::shared_ptr<Aircraft>(new Aircraft(aircraftType, manufacturer, model, totalSeats, seatLayout, rows, fleetCount, status));
 	}
-	catch (const UIException& e)
+	catch (const std::exception& e)
 	{
-		ui->printError(e.what());
+		ui->printError(string(e.what()));
 		ui->pauseScreen();
 		return nullptr;
 	}
@@ -141,15 +99,11 @@ string AircraftCreator::getValidAircraftType()
 			if (AircraftValidator::isValidAircraftType(input))
 				return input;
 			
-			throw AircraftValidationException(AircraftValidationErrorCode::INVALID_AIRCRAFT_TYPE);
+			throw AircraftException("Invalid aircraft type. Must be 2-30 characters, alphanumeric only (e.g., Boeing737, AirbusA320).");
 		}
-		catch (const AircraftValidationException& e)
+		catch (const std::exception& e)
 		{
-			ui->printError(e.what());
-		}
-		catch (const UIException& e)
-		{
-			ui->printError(e.what());
+			ui->printError(string(e.what()));
 		}
 	}
 }
@@ -165,15 +119,11 @@ string AircraftCreator::getValidManufacturer()
 			if (AircraftValidator::isValidManufacturer(input))
 				return input;
 			
-			throw AircraftValidationException(AircraftValidationErrorCode::INVALID_MANUFACTURER);
+			throw AircraftException("Invalid manufacturer. Must not be empty, less than 50 characters. Allowed: alphanumeric, space, hyphen, dot.");
 		}
-		catch (const AircraftValidationException& e)
+		catch (const std::exception& e)
 		{
-			ui->printError(e.what());
-		}
-		catch (const UIException& e)
-		{
-			ui->printError(e.what());
+			ui->printError(string(e.what()));
 		}
 	}
 }
@@ -189,15 +139,11 @@ string AircraftCreator::getValidModel()
 			if (AircraftValidator::isValidModel(input))
 				return input;
 			
-			throw AircraftValidationException(AircraftValidationErrorCode::INVALID_MODEL);
+			throw AircraftException("Invalid model. Must not be empty, less than 50 characters. Allowed: alphanumeric, space, hyphen, dot.");
 		}
-		catch (const AircraftValidationException& e)
+		catch (const std::exception& e)
 		{
-			ui->printError(e.what());
-		}
-		catch (const UIException& e)
-		{
-			ui->printError(e.what());
+			ui->printError(string(e.what()));
 		}
 	}
 }
@@ -213,15 +159,11 @@ int AircraftCreator::getValidSeatCount()
 			if (AircraftValidator::isValidSeatCount(input))
 				return input;
 			
-			throw AircraftValidationException(AircraftValidationErrorCode::INVALID_SEAT_COUNT);
+			throw AircraftException("Invalid seat count. Must be between 50 and 500.");
 		}
-		catch (const AircraftValidationException& e)
+		catch (const std::exception& e)
 		{
-			ui->printError(e.what());
-		}
-		catch (const UIException& e)
-		{
-			ui->printError(e.what());
+			ui->printError(string(e.what()));
 		}
 	}
 }
@@ -237,15 +179,11 @@ string AircraftCreator::getValidSeatLayout()
 			if (AircraftValidator::isValidSeatLayout(input))
 				return input;
 			
-			throw AircraftValidationException(AircraftValidationErrorCode::INVALID_SEAT_LAYOUT);
+			throw AircraftException("Invalid seat layout. Expected format: N-N or N-N-N (e.g., 3-3 or 2-4-2).");
 		}
-		catch (const AircraftValidationException& e)
+		catch (const std::exception& e)
 		{
-			ui->printError(e.what());
-		}
-		catch (const UIException& e)
-		{
-			ui->printError(e.what());
+			ui->printError(string(e.what()));
 		}
 	}
 }
@@ -261,15 +199,11 @@ int AircraftCreator::getValidRows()
 			if (AircraftValidator::isValidRows(input))
 				return input;
 			
-			throw AircraftValidationException(AircraftValidationErrorCode::INVALID_ROWS);
+			throw AircraftException("Invalid number of rows. Must be positive.");
 		}
-		catch (const AircraftValidationException& e)
+		catch (const std::exception& e)
 		{
-			ui->printError(e.what());
-		}
-		catch (const UIException& e)
-		{
-			ui->printError(e.what());
+			ui->printError(string(e.what()));
 		}
 	}
 }
@@ -285,15 +219,11 @@ int AircraftCreator::getValidFleetCount()
 			if (AircraftValidator::isValidFleetCount(input))
 				return input;
 			
-			throw AircraftValidationException(AircraftValidationErrorCode::INVALID_FLEET_COUNT);
+			throw AircraftException("Invalid fleet count. Must be positive.");
 		}
-		catch (const AircraftValidationException& e)
+		catch (const std::exception& e)
 		{
-			ui->printError(e.what());
-		}
-		catch (const UIException& e)
-		{
-			ui->printError(e.what());
+			ui->printError(string(e.what()));
 		}
 	}
 }
@@ -304,7 +234,7 @@ json AircraftCreator::toJson(const shared_ptr<Aircraft>& aircraft)
 {
 	if (!aircraft)
 	{
-		throw AircraftException(AircraftErrorCode::DATABASE_ERROR, "Cannot serialize null aircraft.");
+		throw AircraftException("An error occurred while accessing the database.");
 	}
 	
 	json aircraftData;

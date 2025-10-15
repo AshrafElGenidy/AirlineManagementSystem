@@ -13,19 +13,19 @@ SeatMap::SeatMap(const string& seatLayout, int rows) : seatLayout(seatLayout), r
 	// Validate rows
 	if (rows <= 0)
 	{
-		throw SeatMapException(SeatMapErrorCode::INVALID_ROWS);
+		throw SeatMapException("Invalid number of rows. Must be greater than 0");
 	}
 	
 	// Validate layout
 	if (!validateSeatLayout(seatLayout))
 	{
-		throw SeatMapException(SeatMapErrorCode::INVALID_LAYOUT);
+		throw SeatMapException("Invalid seat layout");
 	}
 	
 	// Validate that layout produces at least one seat
 	if (calculateSeatCount(seatLayout, rows) == 0)
 	{
-		throw SeatMapException(SeatMapErrorCode::INVALID_LAYOUT, "Layout produces zero seats");
+		throw SeatMapException("Invalid seat layout: Layout produces zero seats");
 	}
 }
 
@@ -35,19 +35,19 @@ SeatMap::SeatMap(const string& seatLayout, int rows, const vector<string>& reser
 	// Validate rows
 	if (rows <= 0)
 	{
-		throw SeatMapException(SeatMapErrorCode::INVALID_ROWS);
+		throw SeatMapException("Invalid number of rows. Must be greater than 0");
 	}
 	
 	// Validate layout
 	if (!validateSeatLayout(seatLayout))
 	{
-		throw SeatMapException(SeatMapErrorCode::INVALID_LAYOUT);
+		throw SeatMapException("Invalid seat layout");
 	}
 	
 	// Validate that layout produces at least one seat
 	if (calculateSeatCount(seatLayout, rows) == 0)
 	{
-		throw SeatMapException(SeatMapErrorCode::INVALID_LAYOUT, "Layout produces zero seats");
+		throw SeatMapException("Invalid seat layout: Layout produces zero seats");
 	}
 }
 
@@ -211,13 +211,13 @@ bool SeatMap::reserveSeat(const string& seatNumber)
 	// Validate seat exists
 	if (!isValidSeat(seatNumber))
 	{
-		throw SeatMapException(SeatMapErrorCode::INVALID_SEAT, seatNumber);
+		throw SeatMapException("Seat" + seatNumber + " is an invalid seat number");
 	}
 	
 	// Check if seat is already reserved
 	if (!isSeatAvailable(seatNumber))
 	{
-		throw SeatMapException(SeatMapErrorCode::SEAT_ALREADY_RESERVED, seatNumber);
+		throw SeatMapException("Seat" + seatNumber + " is already reserved");
 	}
 	
 	// Add seat to reserved list
@@ -236,7 +236,7 @@ bool SeatMap::releaseSeat(const string& seatNumber)
 		return true;
 	}
 	
-	throw SeatMapException(SeatMapErrorCode::SEAT_NOT_FOUND, seatNumber);
+	throw SeatMapException("Seat" + seatNumber + " not found in reserved list");
 }
 
 bool SeatMap::isSeatAvailable(const string& seatNumber) const
@@ -388,38 +388,9 @@ vector<string> SeatMap::getSampleSeatMapFooter(const string& seatLayout, int row
 
 // ==================== SeatMapException Class ====================
 
-SeatMapException::SeatMapException(SeatMapErrorCode code) : errorCode(code), additionalInfo("") {}
-
-SeatMapException::SeatMapException(SeatMapErrorCode code, const string& info) : errorCode(code), additionalInfo(info) {}
+SeatMapException::SeatMapException(const string& message) : message(message) {}
 
 const char* SeatMapException::what() const noexcept
 {
-	return getErrorMessage().c_str();
-}
-
-SeatMapErrorCode SeatMapException::getErrorCode() const noexcept
-{
-	return errorCode;
-}
-
-string SeatMapException::getErrorMessage() const noexcept
-{
-	string message;
-	
-	switch (errorCode)
-	{
-		case SeatMapErrorCode::INVALID_SEAT:			message = "Invalid seat number";							break;
-		case SeatMapErrorCode::SEAT_ALREADY_RESERVED:	message = "Seat is already reserved";						break;
-		case SeatMapErrorCode::SEAT_NOT_FOUND:			message = "Seat not found in reserved list";				break;
-		case SeatMapErrorCode::INVALID_LAYOUT:			message = "Invalid seat layout";							break;
-		case SeatMapErrorCode::INVALID_ROWS:			message = "Invalid number of rows. Must be greater than 0";	break;
-		default:										message = "An unknown seat map error occurred";				break;
-	}
-	
-	if (!additionalInfo.empty())
-	{
-		message += ": " + additionalInfo;
-	}
-	
-	return message;
+	return message.c_str();
 }

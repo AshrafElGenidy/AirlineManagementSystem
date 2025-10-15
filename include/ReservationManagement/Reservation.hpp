@@ -68,28 +68,14 @@ public:
 
 // ==================== Reservation Exception Class ====================
 
-enum class ReservationErrorCode
-{
-	PASSENGER_NOT_FOUND,
-	FLIGHT_NOT_FOUND,
-	RESERVATION_NOT_FOUND,
-	INVALID_STATUS_TRANSITION,
-	UNAUTHORIZED_ACCESS,
-	SEAT_OPERATION_FAILED,
-	DATABASE_ERROR
-};
-
 class ReservationException : public std::exception
 {
 private:
-	ReservationErrorCode errorCode;
-	string getErrorMessage() const noexcept;
-
+	string message;
 public:
-	ReservationException(ReservationErrorCode code);
+	ReservationException(const string& message);
 	const char* what() const noexcept override;
 	virtual ~ReservationException() noexcept = default;
-	ReservationErrorCode getErrorCode() const noexcept;
 };
 
 #endif // RESERVATION_HPP

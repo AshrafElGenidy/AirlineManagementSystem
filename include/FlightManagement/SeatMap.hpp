@@ -74,28 +74,14 @@ public:
 
 // ==================== SeatMap Exception Class ====================
 
-enum class SeatMapErrorCode
-{
-	INVALID_SEAT,
-	SEAT_ALREADY_RESERVED,
-	SEAT_NOT_FOUND,
-	INVALID_LAYOUT,
-	INVALID_ROWS
-};
-
 class SeatMapException : public std::exception
 {
 private:
-	SeatMapErrorCode errorCode;
-	string additionalInfo;
-	string getErrorMessage() const noexcept;
-
+	string message;
 public:
-	SeatMapException(SeatMapErrorCode code);
-	SeatMapException(SeatMapErrorCode code, const string& info);
+	SeatMapException(const string& message);
 	const char* what() const noexcept override;
 	virtual ~SeatMapException() noexcept = default;
-	SeatMapErrorCode getErrorCode() const noexcept;
 };
 
 #endif // SEATMAP_HPP

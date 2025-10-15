@@ -85,32 +85,14 @@ public:
 
 // ==================== Flight Exception Class ====================
 
-enum class FlightErrorCode
-{
-	FLIGHT_NOT_FOUND,
-	FLIGHT_EXISTS,
-	INVALID_FLIGHT_NUMBER,
-	INVALID_AIRCRAFT_TYPE,
-	INVALID_ORIGIN,
-	INVALID_DESTINATION,
-	INVALID_DATE_FORMAT,
-	SEAT_OPERATION_FAILED,
-	DATABASE_ERROR
-};
-
 class FlightException : public std::exception
 {
 private:
-	FlightErrorCode errorCode;
 	string message;
-	string getErrorMessage() const noexcept;
-
 public:
-	FlightException(FlightErrorCode code);
-	FlightException(FlightErrorCode code, const string& customMessage);
+	FlightException(const string& message);
 	const char* what() const noexcept override;
 	virtual ~FlightException() noexcept = default;
-	FlightErrorCode getErrorCode() const noexcept;
 };
 
 #endif // FLIGHT_HPP

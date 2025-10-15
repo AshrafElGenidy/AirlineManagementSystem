@@ -58,28 +58,14 @@ public:
 
 // ==================== Database Exception Class ====================
 
-enum class DatabaseErrorCode
-{
-	FILE_NOT_FOUND,
-	FILE_READ_ERROR,
-	FILE_WRITE_ERROR,
-	INVALID_JSON,
-	ENTRY_NOT_FOUND,
-	ATTRIBUTE_NOT_FOUND,
-	DATABASE_ERROR
-};
-
 class DatabaseException : public std::exception
 {
 private:
-	DatabaseErrorCode errorCode;
-	string getErrorMessage() const noexcept;
-
+	string message;
 public:
-	DatabaseException(DatabaseErrorCode code);
+	DatabaseException(const string& message);
 	const char* what() const noexcept override;
 	virtual ~DatabaseException() noexcept = default;
-	DatabaseErrorCode getErrorCode() const noexcept;
 };
 
 #endif // DATABASE_HPP

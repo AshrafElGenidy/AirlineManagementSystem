@@ -83,14 +83,9 @@ void AirlineManagementSystem::runSystem()
 					break;
 			}
 		}
-		catch (const UIException& e)
-		{
-			ui->printError(string(e.what()));
-			ui->pauseScreen();
-		}
 		catch (const std::exception& e)
 		{
-			ui->printError("An unexpected error occurred: " + string(e.what()));
+			ui->printError(string(e.what()));
 			ui->pauseScreen();
 		}
 	}
@@ -147,19 +142,9 @@ void AirlineManagementSystem::handleLogin()
 		// After user session ends (logout)
 		currentUser.reset();
 	}
-	catch (const UserException& e)
-	{
-		ui->printError(string(e.what()));
-		ui->pauseScreen();
-	}
-	catch (const UIException& e)
-	{
-		ui->printError(string(e.what()));
-		ui->pauseScreen();
-	}
 	catch (const std::exception& e)
 	{
-		ui->printError("Login error: " + string(e.what()));
+		ui->printError(string(e.what()));
 		ui->pauseScreen();
 	}
 }

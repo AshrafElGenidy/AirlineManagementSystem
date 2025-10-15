@@ -34,7 +34,7 @@ void Database::loadFromFile()
 	catch (const json::exception& e)
 	{
 		file.close();
-		throw DatabaseException(DatabaseErrorCode::INVALID_JSON);
+		throw DatabaseException("Invalid JSON format in database file.");
 	}
 	
 	file.close();
@@ -50,14 +50,14 @@ void Database::writeToFile() const
 	}
 	catch (const std::exception& e)
 	{
-		throw DatabaseException(DatabaseErrorCode::FILE_WRITE_ERROR);
+		throw DatabaseException("Error writing to database file.");
 	}
 	
 	std::ofstream file(filePath);
 	
 	if (!file.is_open())
 	{
-		throw DatabaseException(DatabaseErrorCode::FILE_WRITE_ERROR);
+		throw DatabaseException("Error writing to database file.");
 	}
 	
 	try
@@ -73,7 +73,7 @@ void Database::writeToFile() const
 	}
 	catch (const json::exception& e)
 	{
-		throw DatabaseException(DatabaseErrorCode::FILE_WRITE_ERROR);
+		throw DatabaseException("Error writing to database file.");
 	}
 	
 	file.close();
@@ -102,12 +102,12 @@ json Database::getEntry(const string& entryKey) const
 {
 	if (!cachedData)
 	{
-		throw DatabaseException(DatabaseErrorCode::DATABASE_ERROR);
+		throw DatabaseException("An error occurred while accessing the database.");
 	}
 	
 	if (!cachedData->contains(entryKey))
 	{
-		throw DatabaseException(DatabaseErrorCode::ENTRY_NOT_FOUND);
+		throw DatabaseException("Entry does not exist in database.");
 	}
 	
 	return (*cachedData)[entryKey];
@@ -122,7 +122,7 @@ void Database::addEntry(const string& entryKey, const json& entryData)
 	
 	if (cachedData->contains(entryKey))
 	{
-		throw DatabaseException(DatabaseErrorCode::DATABASE_ERROR);
+		throw DatabaseException("An error occurred while accessing the database.");
 	}
 	
 	(*cachedData)[entryKey] = entryData;
@@ -133,12 +133,12 @@ void Database::deleteEntry(const string& entryKey)
 {
 	if (!cachedData)
 	{
-		throw DatabaseException(DatabaseErrorCode::DATABASE_ERROR);
+		throw DatabaseException("An error occurred while accessing the database.");
 	}
 	
 	if (!cachedData->contains(entryKey))
 	{
-		throw DatabaseException(DatabaseErrorCode::ENTRY_NOT_FOUND);
+		throw DatabaseException("Entry does not exist in database.");
 	}
 	
 	cachedData->erase(entryKey);
@@ -159,12 +159,12 @@ void Database::updateEntry(const string& entryKey, const json& updates)
 {
 	if (!cachedData)
 	{
-		throw DatabaseException(DatabaseErrorCode::DATABASE_ERROR);
+		throw DatabaseException("An error occurred while accessing the database.");
 	}
 	
 	if (!cachedData->contains(entryKey))
 	{
-		throw DatabaseException(DatabaseErrorCode::ENTRY_NOT_FOUND);
+		throw DatabaseException("Entry does not exist in database.");
 	}
 	
 	for (const auto& [key, value] : updates.items())
@@ -181,19 +181,19 @@ auto Database::getAttribute(const string& entryKey, const string& attributeKey) 
 {
 	if (!cachedData)
 	{
-		throw DatabaseException(DatabaseErrorCode::DATABASE_ERROR);
+		throw DatabaseException("An error occurred while accessing the database.");
 	}
 	
 	if (!cachedData->contains(entryKey))
 	{
-		throw DatabaseException(DatabaseErrorCode::ENTRY_NOT_FOUND);
+		throw DatabaseException("Entry does not exist in database.");
 	}
 	
 	json entry = (*cachedData)[entryKey];
 	
 	if (!entry.contains(attributeKey))
 	{
-		throw DatabaseException(DatabaseErrorCode::ATTRIBUTE_NOT_FOUND);
+		throw DatabaseException("Attribute does not exist in entry.");
 	}
 	
 	return entry[attributeKey];
@@ -203,12 +203,12 @@ void Database::setAttribute(const string& entryKey, const string& attributeKey, 
 {
 	if (!cachedData)
 	{
-		throw DatabaseException(DatabaseErrorCode::DATABASE_ERROR);
+		throw DatabaseException("An error occurred while accessing the database.");
 	}
 	
 	if (!cachedData->contains(entryKey))
 	{
-		throw DatabaseException(DatabaseErrorCode::ENTRY_NOT_FOUND);
+		throw DatabaseException("Entry does not exist in database.");
 	}
 	
 	(*cachedData)[entryKey][attributeKey] = value;
@@ -219,17 +219,17 @@ void Database::deleteAttribute(const string& entryKey, const string& attributeKe
 {
 	if (!cachedData)
 	{
-		throw DatabaseException(DatabaseErrorCode::DATABASE_ERROR);
+		throw DatabaseException("An error occurred while accessing the database.");
 	}
 	
 	if (!cachedData->contains(entryKey))
 	{
-		throw DatabaseException(DatabaseErrorCode::ENTRY_NOT_FOUND);
+		throw DatabaseException("Entry does not exist in database.");
 	}
 	
 	if (!(*cachedData)[entryKey].contains(attributeKey))
 	{
-		throw DatabaseException(DatabaseErrorCode::ATTRIBUTE_NOT_FOUND);
+		throw DatabaseException("Attribute does not exist in entry.");
 	}
 	
 	(*cachedData)[entryKey].erase(attributeKey);
@@ -304,39 +304,9 @@ void Database::initializeIfNotExists()
 
 // ==================== DatabaseException Class ====================
 
-DatabaseException::DatabaseException(DatabaseErrorCode code) : errorCode(code) {}
+DatabaseException::DatabaseException(const string& message) : message(message) {}
 
 const char* DatabaseException::what() const noexcept
 {
-	static string message;
-	message = getErrorMessage();
 	return message.c_str();
-}
-
-DatabaseErrorCode DatabaseException::getErrorCode() const noexcept
-{
-	return errorCode;
-}
-
-string DatabaseException::getErrorMessage() const noexcept
-{
-	switch (errorCode)
-	{
-		case DatabaseErrorCode::FILE_NOT_FOUND:
-			return "Database file not found.";
-		case DatabaseErrorCode::FILE_READ_ERROR:
-			return "Error reading from database file.";
-		case DatabaseErrorCode::FILE_WRITE_ERROR:
-			return "Error writing to database file.";
-		case DatabaseErrorCode::INVALID_JSON:
-			return "Invalid JSON format in database file.";
-		case DatabaseErrorCode::ENTRY_NOT_FOUND:
-			return "Entry does not exist in database.";
-		case DatabaseErrorCode::ATTRIBUTE_NOT_FOUND:
-			return "Attribute does not exist in entry.";
-		case DatabaseErrorCode::DATABASE_ERROR:
-			return "An error occurred while accessing the database.";
-		default:
-			return "An unknown database error occurred.";
-	}
 }

@@ -91,43 +91,9 @@ void Aircraft::setStatus(const string& status) noexcept
 
 // ==================== AircraftException Class ====================
 
-AircraftException::AircraftException(AircraftErrorCode code) : errorCode(code), message(getErrorMessage()) {}
-
-AircraftException::AircraftException(AircraftErrorCode code, const string& customMessage) : errorCode(code), message(customMessage) {}
+AircraftException::AircraftException(const string& message) : message(message) {}
 
 const char* AircraftException::what() const noexcept
 {
 	return message.c_str();
-}
-
-AircraftErrorCode AircraftException::getErrorCode() const noexcept
-{
-	return errorCode;
-}
-
-string AircraftException::getErrorMessage() const noexcept
-{
-	switch (errorCode)
-	{
-		case AircraftErrorCode::AIRCRAFT_NOT_FOUND:
-			return "Aircraft type does not exist.";
-		case AircraftErrorCode::AIRCRAFT_EXISTS:
-			return "Aircraft type already exists in the system.";
-		case AircraftErrorCode::INVALID_AIRCRAFT_TYPE:
-			return "Invalid aircraft type. Must be 2-30 characters, alphanumeric only.";
-		case AircraftErrorCode::INVALID_SEAT_LAYOUT:
-			return "Invalid seat layout. Expected format: N-N or N-N-N (e.g., 3-3 or 2-4-2).";
-		case AircraftErrorCode::INVALID_SEAT_COUNT:
-			return "Invalid seat count. Must be between 50 and 500.";
-		case AircraftErrorCode::INVALID_MANUFACTURER:
-			return "Invalid manufacturer. Must not be empty and less than 50 characters.";
-		case AircraftErrorCode::INVALID_MODEL:
-			return "Invalid model. Must not be empty and less than 50 characters.";
-		case AircraftErrorCode::INVALID_FLEET_COUNT:
-			return "Invalid fleet count. Must be positive.";
-		case AircraftErrorCode::DATABASE_ERROR:
-			return "An error occurred while accessing the database.";
-		default:
-			return "An unknown aircraft error occurred.";
-	}
 }
